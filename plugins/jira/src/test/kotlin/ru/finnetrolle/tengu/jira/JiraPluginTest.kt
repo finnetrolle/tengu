@@ -88,7 +88,7 @@ class JiraPluginTest {
         )
         assertTrue(result is AxiResult.Ok, "expected Ok, got $result")
         assertEquals("new-pat-9999", scope.get("pat"))
-        val payload = (result as AxiResult.Ok).payload as JsonObject
+        val payload = result.payload as JsonObject
         assertEquals("PAT stored for jira (John Doe <jdoe>)", (payload["auth"] as JsonPrimitive).content)
     }
 
@@ -118,7 +118,7 @@ class JiraPluginTest {
         assertTrue(plugin.invoke(listOf("auth", "logout"), ctx(jiraMock { OK(it) }, scope)) is AxiResult.Ok)
         val second = plugin.invoke(listOf("auth", "logout"), ctx(jiraMock { OK(it) }, scope))
         assertTrue(second is AxiResult.Noop)
-        assertEquals("no PAT configured for jira - nothing to remove", (second as AxiResult.Noop).message)
+        assertEquals("no PAT configured for jira - nothing to remove", second.message)
     }
 
     @Test

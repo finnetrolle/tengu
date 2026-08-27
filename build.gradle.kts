@@ -3,6 +3,20 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.detekt) apply false
+    jacoco
+}
+
+val jacocoToolVersion = "0.8.15"
+val jacocoTestTasks = mapOf(
+    ":protocol" to "jvmTest",
+    ":toon" to "jvmTest",
+    ":toolkit" to "test",
+    ":plugins:jira" to "test",
+    ":server" to "test",
+)
+
+jacoco {
+    toolVersion = jacocoToolVersion
 }
 
 allprojects {
@@ -12,6 +26,13 @@ allprojects {
 
 subprojects {
     apply(plugin = "dev.detekt")
+
+    if (path in jacocoTestTasks) {
+        apply(plugin = "jacoco")
+        configure<org.gradle.testing.jacoco.plugins.JacocoPluginExtension> {
+            toolVersion = jacocoToolVersion
+        }
+    }
 
     configure<dev.detekt.gradle.extensions.DetektExtension> {
         buildUponDefaultConfig = true
@@ -44,5 +65,49 @@ subprojects {
     val isWindowsHost = System.getProperty("os.name").lowercase().startsWith("windows")
     tasks.matching { it.name == "mingwX64Test" || it.name == "linuxX64Test" }.configureEach {
         onlyIf { (name == "mingwX64Test") == isWindowsHost }
+    }
+}
+
+tasks.register<org.gradle.testing.jacoco.tasks.JacocoReport>("jacocoTestReport") {
+    group = "verification"
+    description = "Runs JVM tests and generates aggregate JaCoCo XML and HTML reports."
+
+    dependsOn(jacocoTestTasks.map { (projectPath, taskName) -> "$projectPath:$taskName" })
+
+    executionData.from(
+        jacocoTestTasks.map { (projectPath, taskName) ->
+            project(projectPath).layout.buildDirectory.file("jacoco/$taskName.exec")
+        },
+    )
+    classDirectories.from(
+        jacocoTestTasks.keys.flatMap { projectPath ->
+            val buildDir = project(projectPath).layout.buildDirectory
+            listOf(
+                buildDir.dir("classes/kotlin/main"),
+                buildDir.dir("classes/kotlin/jvm/main"),
+                buildDir.dir("classes/java/main"),
+            )
+        },
+    )
+    sourceDirectories.from(
+        jacocoTestTasks.keys.flatMap { projectPath ->
+            val projectDir = project(projectPath).layout.projectDirectory
+            listOf(
+                projectDir.dir("src/main/kotlin"),
+                projectDir.dir("src/main/java"),
+                projectDir.dir("src/commonMain/kotlin"),
+                projectDir.dir("src/commonMain/java"),
+                projectDir.dir("src/jvmMain/kotlin"),
+                projectDir.dir("src/jvmMain/java"),
+            )
+        },
+    )
+
+    reports {
+        xml.required.set(true)
+        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/test/jacocoTestReport.xml"))
+        html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/test/html"))
+        csv.required.set(false)
     }
 }

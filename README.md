@@ -114,8 +114,13 @@ tengu status     # полный roundtrip через сервер
 
 ```sh
 ./gradlew build       # юнит/golden-тесты всех модулей
+./gradlew :jacocoTestReport  # JVM coverage: XML для SonarQube + HTML-отчёт
 bash scripts/e2e.sh   # сценарии S1–S8, поднимает свой сервер на :8080
 ```
+
+JaCoCo объединяет JVM-тесты `protocol`, `toon`, `toolkit`, `plugins:jira` и `server`.
+HTML-отчёт: `build/reports/jacoco/test/html/index.html`; XML для SonarQube:
+`build/reports/jacoco/test/jacocoTestReport.xml`. Native-only модуль `cli` в JaCoCo не входит.
 
 Для живого S6-сценария: `TENGU_E2E_JIRA_URL`, `TENGU_E2E_JIRA_PAT`, `TENGU_E2E_JIRA_PROJECT`.
 

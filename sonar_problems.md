@@ -11,18 +11,21 @@ Quality Gate: **OK**
 
 | Метрика | Значение |
 |---|---:|
-| Строк кода (`ncloc`) | 2403 |
+| Строк кода (`ncloc`) | 2424 |
 | Bugs | 0 |
-| Vulnerabilities | 1 |
+| Vulnerabilities | 0 |
 | Security hotspots | 0 |
-| Code smells | 5 |
-| Coverage | 0.0% |
+| Code smells | 0 |
+| SonarQube coverage | 54.3% |
+| JaCoCo line coverage | 72.7% (737/1014) |
+| JaCoCo branch coverage | 47.2% (274/580) |
 | Duplicated lines | 0.0% |
 | Reliability rating | A (1.0) |
-| Security rating | B (2.0) |
+| Security rating | A (1.0) |
 | Maintainability rating | A (1.0) |
 
-Coverage равен 0.0%, потому что проект не сформировал JaCoCo XML report для импорта. Это не означает, что тестов нет.
+SonarQube импортировал агрегированный JaCoCo XML. Его общая coverage учитывает
+покрытие строк и условий, поэтому отличается от отдельной JaCoCo line coverage.
 
 ## История исправлений
 
@@ -33,6 +36,7 @@ Coverage равен 0.0%, потому что проект не сформиро
 | 2026-08-27 | kotlin:S6626 | cli/build.gradle.kts: задаче `extractCurlStatic` добавлены group `build` и description (обход KTOR-9460) |
 | 2026-08-27 | kotlin:S6615 | ToolInvocation.kt: удалено мёртвое присваивание `tool = freshTool` (значение не читалось после блока refresh) |
 | 2026-08-27 | kotlin:S6517 | HubAuth.kt: `interface HubAuth` стал `fun interface` (SAM-конверсия, контракт сохранён) |
+| 2026-08-27 | JaCoCo | Добавлен агрегированный отчёт для JVM-тестов `protocol`, `toon`, `toolkit`, `plugins:jira` и `server`; SonarQube coverage выросла с 0.0% до 54.3% |
 | 2026-08-27 | kotlin:S6532 | VaultSecretsStore.kt: `ensureSuccess` переписан на `check(status.isSuccess()) { ... }` без смены типа исключения и сообщения |
 
 Попутно (вне реестра, найдено при верификации docker:S6471): сборка Docker-образа была сломана - build-stage не копировал `cli/`, а `settings.gradle.kts` включает `:cli` (Gradle 9: "Configuring project ':cli' without an existing directory is not allowed"). Исправлено: `COPY cli ./cli` в Dockerfile, `cli` убран из `.dockerignore`.
