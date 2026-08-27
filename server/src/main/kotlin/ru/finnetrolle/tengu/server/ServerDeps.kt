@@ -37,6 +37,9 @@ import java.time.Duration
 import java.time.Instant
 
 /** Всё, что нужно роутам; собирается в Main, в тестах — вручную. */
+
+private const val MALFORMED_INVOKE_BODY = "malformed invoke request body"
+
 class ServerDeps(
     val registry: PluginRegistry,
     val auth: HubAuth,
@@ -105,12 +108,12 @@ private suspend fun ApplicationCall.receiveInvokeRequest(log: Logger): InvokeReq
         ProtocolJson.json.decodeFromString<InvokeRequest>(receiveText())
     } catch (e: IllegalArgumentException) {
         // весь kotlinx.serialization (SerializationException и дети) - IllegalArgumentException
-        log.warn("malformed invoke request body", e)
-        respondError(AxiErrorEnvelope(ErrorKind.USAGE, "malformed invoke request body"))
+        log.warn(MALFORMED_INVOKE_BODY, e)
+        respondError(AxiErrorEnvelope(ErrorKind.USAGE, MALFORMED_INVOKE_BODY))
         null
     } catch (e: IOException) {
         log.warn("could not read invoke request body", e)
-        respondError(AxiErrorEnvelope(ErrorKind.USAGE, "malformed invoke request body"))
+        respondError(AxiErrorEnvelope(ErrorKind.USAGE, MALFORMED_INVOKE_BODY))
         null
     }
 }

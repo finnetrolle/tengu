@@ -38,6 +38,8 @@ abstract class ExtractCurlStaticLibs : DefaultTask() {
 }
 
 val extractCurlStatic = tasks.register<ExtractCurlStaticLibs>("extractCurlStatic") {
+    group = "build"
+    description = "Extracts static curl/ssl/crypto libs from the ktor-curl klib for the Linux CLI link (KTOR-9460 workaround)"
     klib.from(curlKlib)
     outDir.set(curlStaticDir)
 }

@@ -5,5 +5,4 @@ data
 .idea
 *.iml
 scripts
-cli
 .kotlin

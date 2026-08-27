@@ -50,7 +50,6 @@ object ToolInvocation {
             val freshTool = manifest.tool(toolName)!!
             matched = matchCommand(freshTool, rest) ?: matchCommand(freshTool, listOf(toolName) + rest)
                 ?: CliRuntime.fail(Validate.command(freshTool, rest.takeWhile { !it.startsWith("-") })!!)
-            tool = freshTool
         }
         val (cmd, remaining) = matched
 

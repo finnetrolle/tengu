@@ -87,9 +87,7 @@ class VaultSecretsStore(
     private fun userSeg(userId: String): String = userId.replace(Regex("[^A-Za-z0-9_.-]"), "_")
 
     private suspend fun HttpResponse.ensureSuccess(what: String) {
-        if (!status.isSuccess()) {
-            throw IllegalStateException("vault $what failed (HTTP ${status.value})")
-        }
+        check(status.isSuccess()) { "vault $what failed (HTTP ${status.value})" }
     }
 
     companion object {

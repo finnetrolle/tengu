@@ -4,7 +4,7 @@ package ru.finnetrolle.tengu.server
  * Auth хаба: bearer-токен → userId. SSO/OIDC заменит реализацию, не протокол:
  * пользователь всегда приходит как userId.
  */
-interface HubAuth {
+fun interface HubAuth {
     fun userIdFor(token: String?): String?
 }
 
