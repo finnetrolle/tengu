@@ -12,7 +12,6 @@ if [ -z "${JAVA_HOME:-}" ]; then
 fi
 [ -n "${JAVA_HOME:-}" ] || { echo "JAVA_HOME is not set"; exit 1; }
 
-TENGU="cli/build/install/tengu/bin/tengu"
 PASS=0
 FAIL=0
 TMP="$(mktemp -d)"
@@ -42,7 +41,18 @@ expect_out() { # name needle cmd...
 }
 
 echo "== сборка =="
-./gradlew :cli:installDist -q || { echo "build failed"; exit 1; }
+# CLI — native-only: нативный бинарник под ОС хоста (mingw на Windows-дев-машине, linux в CI)
+case "$(uname -s)" in
+    Linux*)
+        ./gradlew :cli:linkReleaseExecutableLinuxX64 -q || { echo "build failed"; exit 1; }
+        TENGU="cli/build/bin/linuxX64/releaseExecutable/tengu.kexe"
+        ;;
+    MINGW*|MSYS*|CYGWIN*)
+        ./gradlew :cli:linkReleaseExecutableMingwX64 -q || { echo "build failed"; exit 1; }
+        TENGU="cli/build/bin/mingwX64/releaseExecutable/tengu.exe"
+        ;;
+    *) echo "unsupported OS: $(uname -s)"; exit 1 ;;
+esac
 
 echo "== запуск сервера =="
 TENGU_HUB_TOKENS="dev=h-dev123" \
@@ -109,6 +119,16 @@ expect_out  "S7 no PAT (definitive)" "no PAT configured" "$TENGU" jira auth stat
 expect_exit "S7 status exit 0" 0 "$TENGU" jira auth status
 expect_exit "S7 logout #1" 0 "$TENGU" jira auth logout
 expect_exit "S7 logout #2 (no-op)" 0 "$TENGU" jira auth logout
+
+# stdin-конвенция '-': значение прочитано из пайпа, USAGE-валидация пройдена —
+# значит exit 1 (апстрим .invalid недоступен), а не 2 (missing required flag)
+stdin_exit=0
+printf 'fake-pat' | "$TENGU" jira auth login --token - >"$TMP/out" 2>"$TMP/err" || stdin_exit=$?
+if [ "$stdin_exit" = 1 ]; then
+    ok "S7 stdin-секрет '-' (exit 1, не usage)"
+else
+    fail "S7 stdin-секрет '-'" "expected exit 1, got $stdin_exit"; sed 's/^/     /' "$TMP/out"
+fi
 
 echo "== S8: stale manifest =="
 sed -i 's/"manifestVersion":[0-9]*/"manifestVersion":1/' "$APPDATA/tengu/manifest.json"

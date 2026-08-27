@@ -81,15 +81,16 @@ curl -s http://localhost:8080/v1/health
 ### Шаг 3. Собрать CLI
 
 ```sh
-./gradlew :cli:installDist
+./gradlew :cli:linkReleaseExecutableMingwX64   # Windows → tengu.exe
+./gradlew :cli:linkReleaseExecutableLinuxX64   # Linux → tengu.kexe (можно с любого хоста)
 ```
 
-Исполняемый файл: `cli/build/install/tengu/bin/tengu` (Windows: `tengu.bat`).
+Исполняемый файл: `cli/build/bin/mingwX64/releaseExecutable/tengu.exe` (Windows) / `cli/build/bin/linuxX64/releaseExecutable/tengu.kexe` (Linux). Бинарь самодостаточный — JVM на машине не нужна. Первая сборка скачивает тулчейн Kotlin/Native (~1 ГБ в `~/.konan`).
 
 ### Шаг 4. Связать CLI с сервером (один раз)
 
 ```sh
-cli/build/install/tengu/bin/tengu setup --url http://localhost:8080 --token h-dev123
+cli/build/bin/mingwX64/releaseExecutable/tengu.exe setup --url http://localhost:8080 --token h-dev123
 # setup: configured for http://localhost:8080
 ```
 
@@ -98,8 +99,8 @@ cli/build/install/tengu/bin/tengu setup --url http://localhost:8080 --token h-de
 ### Шаг 5. Короткая команда (опционально)
 
 ```sh
-alias tengu=~/dev/tengu/cli/build/install/tengu/bin/tengu
-# или: скопируй каталог cli/build/install/tengu в удобное место и добавь его bin/ в PATH
+alias tengu=~/dev/tengu/cli/build/bin/mingwX64/releaseExecutable/tengu.exe
+# или: скопируй tengu.exe/tengu.kexe в каталог из PATH
 ```
 
 ### Шаг 6. Проверка

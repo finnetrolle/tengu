@@ -18,8 +18,28 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # нативный тулчейн Kotlin/Native (LLVM, sysroot'ы; ~1 ГБ при первом прогоне)
+      - name: Cache Kotlin/Native (konan)
+        uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-kotlin-2.3.21
+
       - name: Build + unit tests
         run: ./gradlew build
 
-      - name: E2E (S1-S8)
+      # кросс-компиляция Windows-бинарника из Linux (артефакт для машин агентов на Win)
+      - name: Cross-compile Windows binary
+        run: ./gradlew :cli:linkReleaseExecutableMingwX64
+
+      - name: E2E (S1-S8, нативный linuxX64-бинарник)
         run: bash scripts/e2e.sh
+
+      - name: Upload native binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: tengu-native
+          if-no-files-found: error
+          path: |
+            cli/build/bin/linuxX64/releaseExecutable/tengu.kexe
+            cli/build/bin/mingwX64/releaseExecutable/tengu.exe

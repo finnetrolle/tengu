@@ -103,19 +103,20 @@ taskkill /PID <PID> /F
 
 ```powershell
 cd $env:USERPROFILE\dev\tengu
-.\gradlew.bat :cli:installDist
-.\cli\build\install\tengu\bin\tengu.bat setup --url http://localhost:8080 --token h-dev123
-.\cli\build\install\tengu\bin\tengu.bat          # дашборд доступных тулов
+.\gradlew.bat :cli:linkReleaseExecutableMingwX64
+$tengu = ".\cli\build\bin\mingwX64\releaseExecutable\tengu.exe"
+& $tengu setup --url http://localhost:8080 --token h-dev123
+& $tengu                                          # дашборд доступных тулов
 ```
 
-Конфиг сохраняется в `%APPDATA%\tengu` — `setup` делается один раз.
+Бинарь самодостаточный (JVM не нужна). Первая сборка скачивает тулчейн Kotlin/Native (~1 ГБ в `%USERPROFILE%\.konan`). Конфиг сохраняется в `%APPDATA%\tengu` — `setup` делается один раз.
 
 ## 4. Проверка полного цикла с Jira
 
 При запущенном сервере с `TENGU_JIRA_BASE_URL`:
 
 ```powershell
-$t = ".\cli\build\install\tengu\bin\tengu.bat"
+$t = ".\cli\build\bin\mingwX64\releaseExecutable\tengu.exe"
 $t jira auth status                               # "no PAT configured" — норма до логина
 echo <твой-PAT> | & $t jira auth login --token -  # PAT уедет на сервер в data\secrets\
 $t jira issues list --project <KEY>               # живые тикеты

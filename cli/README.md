@@ -1,6 +1,8 @@
 # :cli — агентский CLI
 
-Тонкий прокси `tengu`: discover и вызов тулов через хаб. **Жёсткое правило: не зависит от `:toolkit` и плагинов** — минимальный класс-граф ради startup-латентности и будущего native-image. Всю поверхность CLI узнаёт из манифеста по проводу.
+Тонкий прокси `tengu`: discover и вызов тулов через хаб. **Жёсткое правило: не зависит от `:toolkit` и плагинов** — минимальный класс-граф ради startup-латентности. Всю поверхность CLI узнаёт из манифеста по проводу.
+
+**Native-only KMP-модуль** (mingwX64 + linuxX64): самодостаточный бинарь без JVM на машине агента. HTTP-движки: WinHttp на Windows (системная winhttp.dll, TLS через SChannel), Curl на Linux (статическая линковка).
 
 ## Поведение
 
@@ -28,18 +30,25 @@
 | `tool/HelpText.kt` | `--help` тула и команды: флаги с дефолтами, аргументы, примеры |
 | `cmd/*` | Clikt-обёртки builtins: Setup, Tools (list/show), ManifestRefresh |
 | `render/ToonRenderer.kt` | Весь вывод — TOON (AXI §1/§6/§9): response/error + `help[N]`; `Dashboard`, `ToolDetail` |
+| `platform/*` | expect/actual-слой вместо java.*: env, файловый IO, stdin, время, HTTP-движок (WinHttp/Curl), UTF-8-консоль Windows. `nativeMain` — общий posix, `mingwX64Main`/`linuxX64Main` — специфика |
 
 ## Зависимости
 
-`:protocol`, `:toon`, clikt, ktor-client-cio, slf4j-nop (stderr CLI должен быть пустым).
+`:protocol`, `:toon`, clikt, ktor-client-core; платформенно: ktor-client-winhttp (mingwX64), ktor-client-curl (linuxX64), kotlinx-coroutines-core. JVM-зависимостей нет — модуль не имеет jvm()-таргета.
 
 ## Сборка и тесты
 
 ```sh
-./gradlew :cli:installDist
-# → cli/build/install/tengu/bin/tengu (Windows: tengu.bat)
+./gradlew :cli:linkReleaseExecutableMingwX64   # Windows → cli/build/bin/mingwX64/releaseExecutable/tengu.exe
+./gradlew :cli:linkReleaseExecutableLinuxX64   # Linux (кросс-компиляция с любого хоста) → …/linuxX64/releaseExecutable/tengu.kexe
 ```
 
-Юнит-тестов в модуле нет — поведение покрыто e2e-сценариями S1–S8 (`bash scripts/e2e.sh`).
+Первый запуск скачивает тулчейн Kotlin/Native (~1 ГБ в `~/.konan`), дальше из кэша.
+
+Нюанс линковки: ktor-client-curl 3.4+ бандлит libcurl/libssl/libcrypto статикой внутри klib в порядке, ломающем GNU-линкер (KTOR-9460); обход — задача `extractCurlStatic` + `linkerOpts` в `build.gradle.kts`, возвращают архивы в конец линии линкера.
+
+Нюанс рантайма: у curl-движка известное зависание после серии запросов в одном процессе (KTOR-9141). CLI — процесс на 1–3 запроса с выходом, паттерн «процесс-на-вызов» проблему не затрагивает; не делать из tengu долгоживущий демон без смены движка.
+
+Юнит-тестов в модуле нет — поведение покрыто e2e-сценариями S1–S8 (`bash scripts/e2e.sh`, гоняет нативный бинарь под ОС хоста).
 
 Протокол и топология — [ARCHITECTURE.md](../ARCHITECTURE.md); быстрый старт — [README.md](../README.md).

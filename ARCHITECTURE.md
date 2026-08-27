@@ -33,14 +33,14 @@
 
 | Модуль | Ответственность | Зависимости |
 |---|---|---|
-| `:protocol` | DTO манифеста, InvokeRequest/Response, AxiErrorEnvelope, общий `validate()` | kotlinx-serialization |
-| `:toon` | TOON-энкодер над JsonElement | kotlinx-serialization |
+| `:protocol` | DTO манифеста, InvokeRequest/Response, AxiErrorEnvelope, общий `validate()` — **KMP** (jvm + mingwX64 + linuxX64) | kotlinx-serialization |
+| `:toon` | TOON-энкодер над JsonElement — **KMP** (jvm + mingwX64 + linuxX64) | kotlinx-serialization |
 | `:toolkit` | SDK плагинов: ToolPlugin, InvocationContext, AxiResult, AxiPayloads, SecretScope | :protocol, ktor-client-core |
 | `:plugins:jira` | JiraPlugin, JiraApiClient, команды | :toolkit, ktor-client-cio |
 | `:server` | Ktor-сервер: auth, PluginRegistry, routes, SecretsStore, StatusTool | :protocol, :toolkit, :plugins:jira, ktor-server-cio |
-| `:cli` | Агентский CLI: кэш манифеста, валидация, прокси, TOON-рендер, exit codes | :protocol, :toon, clikt, ktor-client-cio |
+| `:cli` | Агентский CLI: кэш манифеста, валидация, прокси, TOON-рендер, exit codes — **native-only KMP** (mingwX64 + linuxX64, без JVM-таргета) | :protocol, :toon, clikt, ktor-client-winhttp (Win) / ktor-client-curl (Linux) |
 
-**Жёсткое правило: `:cli` не зависит от `:toolkit` и плагинов.** CLI — тонкий прокси; минимальный класс-граф ради startup-латентности и будущего native-image. Пакеты: `ru.finnetrolle.tengu.<module>`.
+**Жёсткое правило: `:cli` не зависит от `:toolkit` и плагинов.** CLI — тонкий прокси с минимальным класс-графом; `:protocol`/`:toon` — KMP-библиотеки: сервер ест их jvm()-вариант, CLI — нативные. Пакеты: `ru.finnetrolle.tengu.<module>`.
 
 ## Протокол клиент↔сервер
 
@@ -106,27 +106,27 @@ CLI: `%APPDATA%\tengu\config.json` (Win) / `~/.config/tengu/config.json` — `{s
 
 ```sh
 export JAVA_HOME=~/.jdks/openjdk-25            # машина разработчика
-./gradlew build                                # всё + тесты
-bash scripts/e2e.sh                            # сценарии S1–S8 (поднимает свой сервер на :8080)
+./gradlew build                                # всё + тесты (нативные тесты — по хосту)
+bash scripts/e2e.sh                            # сценарии S1–S8 нативным бинарём (поднимает свой сервер на :8080)
 ./gradlew :server:run                          # сервер (TENGU_HUB_TOKENS=dev=h-dev123)
-./gradlew :cli:installDist                     # CLI → cli/build/install/tengu/bin/tengu
+./gradlew :cli:linkReleaseExecutableMingwX64   # CLI → cli/build/bin/mingwX64/releaseExecutable/tengu.exe
+./gradlew :cli:linkReleaseExecutableLinuxX64   # …/linuxX64/releaseExecutable/tengu.kexe (кросс-компиляция)
 docker compose up -d                           # прод-стенд: сервер + dev-Vault
 ```
 
-Дев-режим CLI — JVM (`installDist`); native-image — только Linux CI (GraalVM, engine CIO обязателен). Docker-сервер — JVM (multi-stage, temurin).
+CLI — Kotlin/Native: дев-режим и релиз на одном нативном бинаре (mingwX64 — WinHttp, linuxX64 — статический Curl; оба самодостаточны, JVM на машинах агентов не нужна). Первая сборка качает тулчейн konan (~1 ГБ в `~/.konan`). Нюанс: у ktor-client-curl 3.4+ бандл статических либ линкуется в ломающем порядке (KTOR-9460) — обход в `cli/build.gradle.kts` (`extractCurlStatic`). Docker-сервер — JVM (multi-stage, temurin).
 
 ## Текущий статус (MVP 0.1.0)
 
-Реализовано: протокол + TOON-энкодер (golden-тесты), сервер (auth/manifest/invoke, STALE_MANIFEST-handshake), CLI (дашборд, tools list/show, проксирование, локальная валидация, 409/unknown-tool/unknown-command self-healing кэша, stdin-конвенция для secret-флагов), StatusTool, Jira-плагин (auth + issues, PAT в Vault/файл), FileSecretsStore за `TENGU_DEV_SECRETS=1`, e2e S1–S8 (24 проверки). `--version` fast-path ≈ 0.4 с на JVM.
+Реализовано: протокол + TOON-энкодер (golden-тесты), сервер (auth/manifest/invoke, STALE_MANIFEST-handshake), CLI (дашборд, tools list/show, проксирование, локальная валидация, 409/unknown-tool/unknown-command self-healing кэша, stdin-конвенция для secret-флагов), StatusTool, Jira-плагин (auth + issues, PAT в Vault/файл), FileSecretsStore за `TENGU_DEV_SECRETS=1`, e2e S1–S8 (24 проверки). CLI — Kotlin/Native (mingwX64 + linuxX64): самодостаточные бинари, startup десятки мс; `--version` fast-path сохранён.
 
 Нюанс, о котором стоит помнить: даши/`tools list` отдают кэш манифеста до 24 ч (TTL) — свежесть гарантируется на пути invoke (409 → авто-refresh) и при unknown tool/command (refresh + перепроверка).
 
-Отложено (см. «Эволюцию»): native-image в Linux CI, AXI §7 (SessionStart-хуки + устанавливаемый skill), SSO/OIDC, plugin-executor.
+Отложено (см. «Эволюция»): AXI §7 (SessionStart-хуки + устанавливаемый skill), SSO/OIDC, plugin-executor.
 
 ## Эволюция (вне MVP)
 
 - **Plugin-executor**: плагин как отдельный сервис/процесс, говорящий тем же invoke-протоколом — для изоляции, тяжёлых SDK, чужих языков, своего cadence релизов. Агентский CLI не меняется.
 - SSO/OIDC вместо статичных токенов; API-gateway при внешнем доступе.
-- Native-image CLI в CI; AppCDS как fallback.
 - AXI §7: SessionStart-хуки (Claude Code/Codex/OpenCode) + генерируемый skill.
 - Горизонтальное масштабирование: реплики stateless-сервера за балансировщиком.
