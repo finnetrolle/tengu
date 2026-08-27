@@ -1,0 +1,10 @@
+{
+  "task": {
+    "number": 42,
+    "title": "Fix auth bug",
+    "state": "open",
+    "checks": "3/3 passed",
+    "comments": 7
+  },
+  "help": ["Run `tasks view 42 --full` to see complete body"]
+}

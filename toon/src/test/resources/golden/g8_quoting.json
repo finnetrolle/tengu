@@ -1,0 +1,3 @@
+{
+  "values": ["with, comma", "with \"quote\"", " leading", "#hash", "42", "true", "", "multi\nline", "plain"]
+}

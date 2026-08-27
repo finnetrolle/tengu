@@ -1,0 +1,21 @@
+services:
+  server:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      TENGU_HUB_TOKENS: ${TENGU_HUB_TOKENS:?set in .env, format user=token,...}
+      TENGU_JIRA_BASE_URL: ${TENGU_JIRA_BASE_URL:-}
+      TENGU_VAULT_ADDR: http://vault:8200
+      TENGU_VAULT_TOKEN: ${TENGU_VAULT_TOKEN:-dev-root}
+    depends_on:
+      - vault
+
+  vault:
+    image: hashicorp/vault:latest
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev-root
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    # dev-режим vault: только для стенда, не для продакшена

@@ -1,0 +1,9 @@
+.git
+.gradle
+**/build
+data
+.idea
+*.iml
+scripts
+cli
+.kotlin

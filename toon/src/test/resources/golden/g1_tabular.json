@@ -1,0 +1,6 @@
+{
+  "tasks": [
+    {"id": "1", "title": "Fix auth bug", "status": "open", "assignee": "alice"},
+    {"id": "2", "title": "Add pagination", "status": "closed", "assignee": "bob"}
+  ]
+}

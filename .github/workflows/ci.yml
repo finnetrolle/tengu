@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # JDK 21 = и лаунчер Gradle, и тулчейн модулей (jvmToolchain(21)) — без скачиваний
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build + unit tests
+        run: ./gradlew build
+
+      - name: E2E (S1-S8)
+        run: bash scripts/e2e.sh

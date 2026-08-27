@@ -1,0 +1,7 @@
+repo:
+  name: tengu
+  owner:
+    login: corp
+    id: 7
+  private: true
+  labels[3]: bug,infra,docs
