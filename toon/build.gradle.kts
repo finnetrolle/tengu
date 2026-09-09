@@ -8,6 +8,8 @@ kotlin {
     jvm()
     mingwX64()
     linuxX64()
+    // macOS-таргет только на mac-хосте: K/N не кросс-компилирует Apple-таргеты с Linux/Windows
+    if (TenguHost.isMac) macosArm64()
     jvmToolchain(21)
 
     sourceSets {

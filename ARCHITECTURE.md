@@ -33,12 +33,12 @@
 
 | Модуль | Ответственность | Зависимости |
 |---|---|---|
-| `:protocol` | DTO манифеста, InvokeRequest/Response, AxiErrorEnvelope, общий `validate()` — **KMP** (jvm + mingwX64 + linuxX64) | kotlinx-serialization |
-| `:toon` | TOON-энкодер над JsonElement — **KMP** (jvm + mingwX64 + linuxX64) | kotlinx-serialization |
+| `:protocol` | DTO манифеста, InvokeRequest/Response, AxiErrorEnvelope, общий `validate()` — **KMP** (jvm + mingwX64 + linuxX64; macosArm64 на mac-хосте) | kotlinx-serialization |
+| `:toon` | TOON-энкодер над JsonElement — **KMP** (jvm + mingwX64 + linuxX64; macosArm64 на mac-хосте) | kotlinx-serialization |
 | `:toolkit` | SDK плагинов: ToolPlugin, InvocationContext, AxiResult, AxiPayloads, SecretScope | :protocol, ktor-client-core |
 | `:plugins:jira` | JiraPlugin, JiraApiClient, команды | :toolkit, ktor-client-cio |
 | `:server` | Ktor-сервер: auth, PluginRegistry, routes, SecretsStore, StatusTool | :protocol, :toolkit, :plugins:jira, ktor-server-cio |
-| `:cli` | Агентский CLI: кэш манифеста, валидация, прокси, TOON-рендер, exit codes — **native-only KMP** (mingwX64 + linuxX64, без JVM-таргета) | :protocol, :toon, clikt, ktor-client-winhttp (Win) / ktor-client-curl (Linux) |
+| `:cli` | Агентский CLI: кэш манифеста, валидация, прокси, TOON-рендер, exit codes — **native-only KMP** (mingwX64 + linuxX64; macosArm64 на mac-хосте, без JVM-таргета) | :protocol, :toon, clikt, ktor-client-winhttp (Win) / ktor-client-curl (Linux) / ktor-client-darwin (macOS) |
 
 **Жёсткое правило: `:cli` не зависит от `:toolkit` и плагинов.** CLI — тонкий прокси с минимальным класс-графом; `:protocol`/`:toon` — KMP-библиотеки: сервер ест их jvm()-вариант, CLI — нативные. Пакеты: `ru.finnetrolle.tengu.<module>`.
 
@@ -111,10 +111,11 @@ bash scripts/e2e.sh                            # сценарии S1–S8 нат
 ./gradlew :server:run                          # сервер (TENGU_HUB_TOKENS=dev=h-dev123)
 ./gradlew :cli:linkReleaseExecutableMingwX64   # CLI → cli/build/bin/mingwX64/releaseExecutable/tengu.exe
 ./gradlew :cli:linkReleaseExecutableLinuxX64   # …/linuxX64/releaseExecutable/tengu.kexe (кросс-компиляция)
+./gradlew :cli:linkReleaseExecutableMacosArm64 # …/macosArm64/releaseExecutable/tengu.kexe (только на mac-хосте)
 docker compose up -d                           # прод-стенд: сервер + dev-Vault
 ```
 
-CLI — Kotlin/Native: дев-режим и релиз на одном нативном бинаре (mingwX64 — WinHttp, linuxX64 — статический Curl; оба самодостаточны, JVM на машинах агентов не нужна). Первая сборка качает тулчейн konan (~1 ГБ в `~/.konan`). Нюанс: у ktor-client-curl 3.4+ бандл статических либ линкуется в ломающем порядке (KTOR-9460) — обход в `cli/build.gradle.kts` (`extractCurlStatic`). Docker-сервер — JVM (multi-stage, temurin).
+CLI — Kotlin/Native: дев-режим и релиз на одном нативном бинаре (mingwX64 — WinHttp, linuxX64 — статический Curl, macosArm64 — Darwin/NSURLSession; все самодостаточны, JVM на машинах агентов не нужна). macOS-таргет создаётся только на mac-хосте: K/N не кросс-компилирует Apple-таргеты с Linux/Windows (CI на Linux его не собирает). Первая сборка качает тулчейн konan (~1 ГБ в `~/.konan`). Нюанс: у ktor-client-curl 3.4+ бандл статических либ линкуется в ломающем порядке (KTOR-9460) — обход в `cli/build.gradle.kts` (`extractCurlStatic`). Docker-сервер — JVM (multi-stage, temurin).
 
 ## Текущий статус (MVP 0.1.0)
 

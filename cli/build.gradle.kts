@@ -64,8 +64,37 @@ kotlin {
             )
         }
     }
+    // macOS-таргет только на mac-хосте: K/N не кросс-компилирует Apple-таргеты с Linux/Windows
+    if (TenguHost.isMac) {
+        macosArm64 {
+            binaries.executable {
+                entryPoint = "ru.finnetrolle.tengu.cli.main"
+                baseName = "tengu" // → tengu.kexe
+            }
+        }
+    }
+
+    // пересобираем дефолтную иерархию сразу после объявления таргетов,
+    // чтобы свои dependsOn ниже достраивали дерево, а не отключали шаблон
+    applyDefaultHierarchyTemplate()
 
     sourceSets {
+        // общий POSIX-слой linux и macOS (src/unixMain): шаблонного intermediate для этой пары нет,
+        // поэтому dependsOn вешаем сами на листы-таргеты
+        val unixMain by creating {
+            dependsOn(commonMain.get())
+        }
+        linuxX64Main.get().dependsOn(unixMain)
+        if (TenguHost.isMac) {
+            macosArm64Main.get().apply {
+                dependsOn(unixMain)
+                dependencies {
+                    // Darwin (NSURLSession): системный фреймворк macOS, TLS через Security.framework
+                    implementation(libs.ktor.client.darwin)
+                }
+            }
+        }
+
         commonMain {
             dependencies {
                 implementation(project(":protocol"))
@@ -76,13 +105,13 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
             }
         }
-        mingwX64Main {
+        val mingwX64Main by getting {
             dependencies {
                 // системный WinHttp: TLS через SChannel, .exe без внешних DLL
                 implementation(libs.ktor.client.winhttp)
             }
         }
-        linuxX64Main {
+        val linuxX64Main by getting {
             dependencies {
                 // libcurl линкуется статически → самодостаточный tengu.kexe
                 implementation(libs.ktor.client.curl)

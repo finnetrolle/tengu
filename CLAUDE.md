@@ -17,6 +17,7 @@ JDK 21+ required (toolchains auto-provision via foojay).
 ./gradlew :server:run                              # local server (env vars below)
 ./gradlew :cli:linkReleaseExecutableMingwX64       # → cli/build/bin/mingwX64/releaseExecutable/tengu.exe
 ./gradlew :cli:linkReleaseExecutableLinuxX64       # → cli/build/bin/linuxX64/releaseExecutable/tengu.kexe
+./gradlew :cli:linkReleaseExecutableMacosArm64     # → cli/build/bin/macosArm64/releaseExecutable/tengu.kexe (mac host only)
 bash scripts/e2e.sh                                # E2E S1-S8: builds native CLI, starts own server on :8080
 ```
 
@@ -33,7 +34,7 @@ KMP modules (`:protocol`, `:toon`): common tests run through the JVM target:
 ./gradlew :protocol:jvmTest --tests "*ValidateTest"
 ```
 
-Native tests (`mingwX64Test`/`linuxX64Test`) execute only on their matching host: KGP disables foreign-host native targets, and `onlyIf` in root `build.gradle.kts` additionally gates cross-cases (e.g. `mingwX64Test` on Linux). On macOS both are skipped, and `scripts/e2e.sh` aborts - it supports only Linux and Windows (MINGW) hosts. First native link downloads the konan toolchain (~1 GB into `~/.konan`).
+Native tests (`mingwX64Test`/`linuxX64Test`/`macosArm64Test`) execute only on their matching host: the `macosArm64` target is created only on a macOS host (K/N cannot cross-compile Apple targets from Linux/Windows), and `onlyIf` in root `build.gradle.kts` gates the other cross-cases (e.g. `mingwX64Test` on Linux). `scripts/e2e.sh` supports only Linux and Windows (MINGW) hosts - on macOS it aborts. First native link downloads the konan toolchain (~1 GB into `~/.konan`).
 
 Local server env:
 
@@ -49,7 +50,7 @@ Gradle modules (packages `ru.finnetrolle.tengu.<module>`):
 
 | Module | Role |
 |---|---|
-| `:protocol` | Wire DTOs (manifest, InvokeRequest/Response, AxiErrorEnvelope) + shared usage validation (`Validate` object). KMP: jvm + mingwX64 + linuxX64 |
+| `:protocol` | Wire DTOs (manifest, InvokeRequest/Response, AxiErrorEnvelope) + shared usage validation (`Validate` object). KMP: jvm + mingwX64 + linuxX64 (+ macosArm64 on mac hosts) |
 | `:toon` | TOON encoder over JsonElement. KMP. Golden fixtures in `toon/src/jvmTest/resources/golden` |
 | `:toolkit` | Plugin SDK: `ToolPlugin`, `InvocationContext`, `AxiResult`, `AxiPayloads`, `SecretScope` |
 | `:plugins:jira` | JiraPlugin, JiraApiClient, commands. Template for future integrations |

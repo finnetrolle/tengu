@@ -7,6 +7,14 @@ plugins {
 }
 
 val jacocoToolVersion = "0.8.15"
+
+// K/N линкует Apple-таргеты только через полный Xcode (xcrun xcodebuild); CLT мало.
+// lazy: xcrun исполняется при первом обращении из onlyIf (execution phase), а не на каждой конфигурации
+val xcodeAvailable by lazy {
+    runCatching {
+        providers.exec { commandLine("xcrun", "xcodebuild", "-version") }.result.get().exitValue == 0
+    }.getOrDefault(false)
+}
 val jacocoTestTasks = mapOf(
     ":protocol" to "jvmTest",
     ":toon" to "jvmTest",
@@ -61,10 +69,13 @@ subprojects {
     }
 
     // Нативные тесты исполняются только на своём хосте:
-    // mingwX64Test на Linux требует Wine, linuxX64Test на Windows не запустится.
-    val isWindowsHost = System.getProperty("os.name").lowercase().startsWith("windows")
-    tasks.matching { it.name == "mingwX64Test" || it.name == "linuxX64Test" }.configureEach {
-        onlyIf { (name == "mingwX64Test") == isWindowsHost }
+    // mingwX64Test на Linux/macOS требует Wine, linuxX64Test и macosArm64Test — чужой ОС.
+    val hostFamily = TenguHost.hostFamily
+    tasks.matching { it.name == "mingwX64Test" || it.name == "linuxX64Test" || it.name == "macosArm64Test" }.configureEach {
+        onlyIf { name.removeSuffix("Test") == hostFamily && (name != "macosArm64Test" || xcodeAvailable) }
+    }
+    tasks.matching { it.name.startsWith("link") && it.name.contains("MacosArm64") }.configureEach {
+        onlyIf { xcodeAvailable }
     }
 }
 
