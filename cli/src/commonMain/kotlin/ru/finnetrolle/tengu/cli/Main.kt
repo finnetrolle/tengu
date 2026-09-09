@@ -15,7 +15,7 @@ import com.github.ajalt.clikt.core.PrintHelpMessage
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.parse
 import com.github.ajalt.clikt.core.subcommands
-import kotlin.system.exitProcess
+import com.github.ajalt.clikt.output.ParameterFormatter
 
 fun main(argv: Array<String>) {
     // до любого вывода: интерактивная Windows-консоль должна стать UTF-8 (на пайпы не влияет)
@@ -72,17 +72,22 @@ private class TenguRootCommand : CliktCommand(name = "tengu") {
 }
 
 private fun runBuiltins(argv: Array<String>) {
+    val root = TenguRootCommand()
     try {
-        TenguRootCommand().parse(argv.toList())
+        root.parse(argv.toList())
     } catch (e: PrintHelpMessage) {
-        print(e.message ?: "")
-        exitProcess(0)
+        // clikt 5: текст справки не в e.message — форматируется из контекста команды, бросившей ошибку
+        print(root.getFormattedHelp(e) ?: "")
     } catch (e: UsageError) {
-        CliRuntime.fail(wrapClikt(e.message ?: "usage error", argv))
+        CliRuntime.fail(wrapClikt(usageText(e), argv))
     } catch (e: CliktError) {
         CliRuntime.fail(wrapClikt(e.message ?: "error", argv))
     }
 }
+
+/** Короткий текст ошибки использования: clikt 5 держит его в formatMessage подклассов, а не в message. */
+private fun usageText(e: UsageError): String =
+    e.message ?: e.context?.let { ctx -> e.formatMessage(ctx.localization, ParameterFormatter.Plain) } ?: "usage error"
 
 private fun wrapClikt(message: String, argv: Array<String>): AxiErrorEnvelope = AxiErrorEnvelope(
     kind = ErrorKind.USAGE,

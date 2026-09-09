@@ -74,10 +74,17 @@ mkdir -p "$APPDATA" "$HOME"
 
 "$TENGU" setup --url http://localhost:8080 --token h-dev123 >/dev/null || { echo "setup failed"; exit 1; }
 
-echo "== S1: --version fast path =="
+echo "== S1: --version fast path + help =="
 expect_exit "S1 exit 0" 0 "$TENGU" --version
 expect_out  "S1 вывод" "tengu 0.1.0" "$TENGU" --version
 expect_exit "S1 -V" 0 "$TENGU" -V
+# clikt 5: справка и тексты usage-ошибок форматируются из контекста команды, не из e.message
+expect_exit "S1 --help exit 0" 0 "$TENGU" --help
+expect_out  "S1 --help непустой" "Usage: tengu" "$TENGU" --help
+expect_out  "S1 tools --help" "Usage: tengu tools" "$TENGU" tools --help
+expect_exit "S1 неизвестный флаг → 2" 2 "$TENGU" --badflag
+expect_out  "S1 текст ошибки флага" "no such option" "$TENGU" --badflag
+expect_out  "S1 текст ошибки субкоманды" "no such subcommand" "$TENGU" tools nosuch
 
 echo "== S2: content-first дашборд =="
 expect_out "S2 bin/description" "description:" "$TENGU"
