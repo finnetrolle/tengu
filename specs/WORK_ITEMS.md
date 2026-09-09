@@ -29,9 +29,16 @@ specs/
 
 | Work item | Статус | Прогресс | Оценка |
 |---|---|---:|---:|
+| [EPIC-01: Безопасное подтверждение внешних мутаций Tengu](epics/epic_01_safe_external_mutations.md) | `Ready for implementation` | 0/3 | 4.5-8 инженерных дней |
 | [TNG-01: Сохранять пользовательский ORDER BY в Jira JQL](issues/issue_01_preserve_jira_jql_ordering.md) | `Ready for implementation` | не начата | 1 инженерный день |
-| [TNG-02: Добавить команду смены статуса Jira-задачи](issues/issue_02_jira_issue_transition.md) | `Ready for implementation` | не начата | 2 инженерных дня |
+| [TNG-02: Добавить команду смены статуса Jira-задачи](issues/issue_02_jira_issue_transition.md) | `Blocked` | не начата | 2 инженерных дня |
 
 ## Следующая работа
 
 Текущий следующий шаг: реализовать [TNG-01](issues/issue_01_preserve_jira_jql_ordering.md).
+
+Параллельный frontier EPIC-01:
+[TNG-01-01](issues/epic_01/issue_01_01_external_mutation_policy.md) и
+[TNG-01-02](issues/epic_01/issue_01_02_command_effect_metadata.md).
+TNG-02 заблокирована до завершения
+[TNG-01-03](issues/epic_01/issue_01_03_two_phase_approval.md).
