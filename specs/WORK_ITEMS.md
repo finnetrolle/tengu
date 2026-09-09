@@ -30,6 +30,7 @@ specs/
 | Work item | Статус | Прогресс | Оценка |
 |---|---|---:|---:|
 | [EPIC-01: Безопасное подтверждение внешних мутаций Tengu](epics/epic_01_safe_external_mutations.md) | `Ready for implementation` | 0/3 | 4.5-8 инженерных дней |
+| [EPIC-03: Внешняя авторизация команд Tengu](epics/epic_03_external_authorization.md) | `Draft` | не декомпозирован | после уточнения контракта и пилотного провайдера |
 | [TNG-01: Сохранять пользовательский ORDER BY в Jira JQL](issues/issue_01_preserve_jira_jql_ordering.md) | `Ready for implementation` | не начата | 1 инженерный день |
 | [TNG-02: Добавить команду смены статуса Jira-задачи](issues/issue_02_jira_issue_transition.md) | `Blocked` | не начата | 2 инженерных дня |
 
