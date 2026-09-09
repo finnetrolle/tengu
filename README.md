@@ -68,16 +68,19 @@ TENGU_JIRA_BASE_URL="https://jira.corp" \
 
 - `TENGU_HUB_TOKENS` — список `пользователь=токен` хаба (тут: пользователь `dev`, токен `h-dev123`)
 - `TENGU_DEV_SECRETS=1` — секреты (PAT) в файл вместо Vault; только для разработки (корень — `TENGU_DEV_SECRETS_DIR`, по умолчанию `data/`, файлы `data/{user}/{tool}.json`)
+- `TENGU_LOG_LEVEL` - DEBUG/INFO/WARN/ERROR, default INFO; библиотечные логи от WARN
+- `TENGU_LOG_RESPONSE_BODY` - 0/1, default 0; разрешённые invoke-ответы до 16 384 UTF-8 байт
 - `TENGU_JIRA_BASE_URL` — адрес твоего Jira; без неё jira-тул не зарегистрируется (будет только `status`)
 
-Сервер готов, когда в логе появится `Responding at http://127.0.0.1:8080`. Проверка:
+Сервер готов, когда в JSON-логе появится `"event":"server_ready"`. Проверка:
 
 ```sh
 curl -s http://localhost:8080/v1/health
 # {"serverVersion":"0.1.0","tools":2,"manifestVersion":3}
 ```
 
-Останов — Ctrl+C.
+Останов - Ctrl+C. [Схема логов, исключения тела и OTel mapping](docs/server-logging.md).
+При остановке сначала завершаются engine и HTTP client, затем очищается очередь Logback.
 
 ### Шаг 3. Собрать CLI
 
@@ -116,7 +119,8 @@ tengu status     # полный roundtrip через сервер
 ```sh
 ./gradlew build       # юнит/golden-тесты всех модулей
 ./gradlew :jacocoTestReport  # JVM coverage: XML для SonarQube + HTML-отчёт
-bash scripts/e2e.sh   # сценарии S1–S8, поднимает свой сервер на :8080
+bash scripts/e2e.sh   # сценарии S1-S8 в Linux/Windows shell, поднимает сервер на :8080
+bash scripts/e2e-logging.sh # Docker: JSON-логи, request ID и SIGTERM
 ```
 
 JaCoCo объединяет JVM-тесты `protocol`, `toon`, `toolkit`, `plugins:jira` и `server`.

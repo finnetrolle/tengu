@@ -35,6 +35,9 @@ jobs:
       - name: E2E (S1-S8, нативный linuxX64-бинарник)
         run: bash scripts/e2e.sh
 
+      - name: Docker structured logging and graceful shutdown
+        run: bash scripts/e2e-logging.sh
+
       - name: Upload native binaries
         uses: actions/upload-artifact@v4
         with:

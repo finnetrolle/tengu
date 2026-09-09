@@ -18,11 +18,10 @@ TMP="$(mktemp -d)"
 trap 'cleanup' EXIT
 
 cleanup() {
-    [ -n "${SERVER_PID:-}" ] && kill "$SERVER_PID" 2>/dev/null
-    # убить java-ребёнка gradle, если остался
-    local pid
-    pid=$(netstat -ano 2>/dev/null | grep ":8080.*LISTENING" | head -1 | awk '{print $NF}')
-    [ -n "$pid" ] && taskkill //PID "$pid" //F >/dev/null 2>&1
+    if [ -n "${SERVER_PID:-}" ]; then
+        kill "$SERVER_PID" 2>/dev/null || true
+        wait "$SERVER_PID" 2>/dev/null || true
+    fi
     rm -rf "$TMP"
 }
 
@@ -54,18 +53,24 @@ case "$(uname -s)" in
     *) echo "unsupported OS: $(uname -s)"; exit 1 ;;
 esac
 
+# Build before measuring listener readiness; slow/first-time compilation is not server startup.
+./gradlew :server:installDist -q || { echo "server build failed"; exit 1; }
 echo "== запуск сервера =="
 TENGU_HUB_TOKENS="dev=h-dev123" \
 TENGU_DEV_SECRETS=1 \
 TENGU_DEV_SECRETS_DIR="$TMP/secrets" \
 TENGU_JIRA_BASE_URL="${TENGU_E2E_JIRA_URL:-http://jira.invalid}" \
-    ./gradlew :server:run -q &
+    server/build/install/server/bin/server >"$TMP/server.out" 2>"$TMP/server.err" &
 SERVER_PID=$!
 for _ in $(seq 1 60); do
     curl -sf -m 2 http://localhost:8080/v1/health >/dev/null && break
     sleep 1
 done
-curl -sf -m 2 http://localhost:8080/v1/health >/dev/null || { echo "server did not start"; exit 1; }
+curl -sf -m 2 http://localhost:8080/v1/health >/dev/null || {
+    echo "server did not start"
+    cat "$TMP/server.out" "$TMP/server.err"
+    exit 1
+}
 
 # изолированный конфиг CLI (не трогаем реальный %APPDATA% / ~/.config)
 export APPDATA="$TMP/appdata"

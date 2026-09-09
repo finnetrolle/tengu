@@ -19,7 +19,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.call
-import io.ktor.server.application.log
 import io.ktor.server.request.header
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.header
@@ -30,7 +29,11 @@ import io.ktor.server.routing.routing
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.slf4j.LoggerFactory
 import org.slf4j.Logger
+import ru.finnetrolle.tengu.server.logging.LoggingConfig
+import ru.finnetrolle.tengu.server.logging.installRequestLogging
+import ru.finnetrolle.tengu.server.logging.requestLog
 import java.io.IOException
 import java.time.Clock
 import java.time.Duration
@@ -51,9 +54,15 @@ class ServerDeps(
     val secretsScopeFor: (userId: String, tool: String) -> SecretScope,
 )
 
-fun Application.tenguModule(deps: ServerDeps) {
+fun Application.tenguModule(
+    deps: ServerDeps,
+    loggingConfig: LoggingConfig = LoggingConfig(),
+    requestLogger: Logger = LoggerFactory.getLogger("ru.finnetrolle.tengu.server.logging.RequestLogging"),
+) {
+    installRequestLogging(loggingConfig, requestLogger)
     routing {
         get("/v1/health") {
+            call.requestLog.route = "/v1/health"
             call.respondText(
                 ProtocolJson.json.encodeToString(
                     buildJsonObject {
@@ -68,6 +77,7 @@ fun Application.tenguModule(deps: ServerDeps) {
         }
 
         get("/v1/manifest") {
+            call.requestLog.route = "/v1/manifest"
             if (call.authorizedUser(deps) == null) return@get
             call.response.header("X-Tengu-Server-Version", deps.serverVersion)
             call.respondText(
@@ -76,17 +86,20 @@ fun Application.tenguModule(deps: ServerDeps) {
             )
         }
 
-        post("/v1/invoke") { call.handleInvoke(deps, log) }
+        post("/v1/invoke") {
+            call.requestLog.route = "/v1/invoke"
+            call.handleInvoke(deps)
+        }
     }
 }
 
-private suspend fun ApplicationCall.handleInvoke(deps: ServerDeps, log: Logger) {
+private suspend fun ApplicationCall.handleInvoke(deps: ServerDeps) {
     val userId = authorizedUser(deps) ?: return
     if (rejectStaleManifest(deps)) return
-    val request = receiveInvokeRequest(log) ?: return
+    val request = receiveInvokeRequest() ?: return
     val tool = resolveTool(deps, request) ?: return
     if (rejectInvalidCommand(tool, request)) return
-    respondInvokeResult(invokeTool(deps, userId, request, tool, log))
+    respondInvokeResult(invokeTool(deps, userId, request, tool))
 }
 
 /** Рукопожатие версий: агент со старым кэшем получает 409 и обновляется. */
@@ -103,16 +116,16 @@ private suspend fun ApplicationCall.rejectStaleManifest(deps: ServerDeps): Boole
     return true
 }
 
-private suspend fun ApplicationCall.receiveInvokeRequest(log: Logger): InvokeRequest? {
+private suspend fun ApplicationCall.receiveInvokeRequest(): InvokeRequest? {
     return try {
         ProtocolJson.json.decodeFromString<InvokeRequest>(receiveText())
     } catch (e: IllegalArgumentException) {
         // весь kotlinx.serialization (SerializationException и дети) - IllegalArgumentException
-        log.warn(MALFORMED_INVOKE_BODY, e)
+        requestLog.exception(e)
         respondError(AxiErrorEnvelope(ErrorKind.USAGE, MALFORMED_INVOKE_BODY))
         null
     } catch (e: IOException) {
-        log.warn("could not read invoke request body", e)
+        requestLog.exception(e)
         respondError(AxiErrorEnvelope(ErrorKind.USAGE, MALFORMED_INVOKE_BODY))
         null
     }
@@ -126,7 +139,7 @@ private suspend fun ApplicationCall.resolveTool(deps: ServerDeps, request: Invok
         respondError(error)
         return null
     }
-    return deps.registry.find(request.tool)!!
+    return deps.registry.find(request.tool)!!.also { requestLog.tool = it.descriptor.name }
 }
 
 private suspend fun ApplicationCall.rejectInvalidCommand(
@@ -134,21 +147,21 @@ private suspend fun ApplicationCall.rejectInvalidCommand(
     request: InvokeRequest,
 ): Boolean {
     val cmd = tool.descriptor.commands.firstOrNull { it.path == request.commandPath }
+    requestLog.command = cmd?.path?.toList()
     val error = if (cmd == null) {
         Validate.command(tool.descriptor, request.commandPath)
     } else {
         Validate.invoke(tool.descriptor.name, cmd, request.args, request.flags)
     }
-    if (error != null) respondError(error)
+    if (error != null) respondError(error) else if (cmd != null) requestLog.resolvedCommand(cmd)
     return error != null
 }
 
-private suspend fun invokeTool(
+private suspend fun ApplicationCall.invokeTool(
     deps: ServerDeps,
     userId: String,
     request: InvokeRequest,
     tool: ToolPlugin,
-    log: Logger,
 ): AxiResult {
     val ctx = InvocationContext(
         tool = tool.descriptor.name,
@@ -167,7 +180,7 @@ private suspend fun invokeTool(
     // как прежний catch(Exception) - с тем же внешним контрактом).
     return runCatching { tool.invoke(request.commandPath, ctx) }
         .getOrElse { e ->
-            log.error("plugin '${tool.descriptor.name}' failed on '${request.commandPath.joinToString(" ")}'", e)
+            requestLog.exception(e)
             AxiResult.err(
                 ErrorKind.INTERNAL,
                 "tool '${tool.descriptor.name}' failed to complete the request",
@@ -177,6 +190,7 @@ private suspend fun invokeTool(
 }
 
 private suspend fun ApplicationCall.respondInvokeResult(result: AxiResult) {
+    if (result is AxiResult.Noop) requestLog.outcome = "noop"
     when (result) {
         is AxiResult.Ok -> respondText(
             ProtocolJson.json.encodeToString(InvokeResponse(result.payload, result.helpHints, 0)),
@@ -204,10 +218,13 @@ private suspend fun ApplicationCall.authorizedUser(deps: ServerDeps): String? {
             ),
         )
     }
+    requestLog.userId = userId
     return userId
 }
 
 private suspend fun ApplicationCall.respondError(e: AxiErrorEnvelope) {
+    requestLog.errorKind = e.kind
+    requestLog.outcome = "error"
     respondText(
         ProtocolJson.json.encodeToString(e),
         ContentType.Application.Json,

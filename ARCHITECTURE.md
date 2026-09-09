@@ -78,7 +78,7 @@ interface ToolPlugin {
 - `SecretsStore { put/get/delete/describe/scopeFor }`; `describe` возвращает мету (last4, setAt, version) — никогда значение.
 - **VaultSecretsStore** (prod): Vault KV v2 через REST (без тяжёлого Java-драйвера), пути `secret/tengu/{userId}/{tool}`, заголовок `X-Vault-Token`.
 - **FileSecretsStore** (только dev/test): `data/{user}/{tool}.json` (корень - `TENGU_DEV_SECRETS_DIR`, по умолчанию `data`), активируется лишь при `TENGU_DEV_SECRETS=1`, громкое предупреждение в лог.
-- Поток PAT: `tengu jira auth login` → плагин проверяет токен на `GET /rest/api/2/myself` → `secrets.put("pat", …)` → Vault. Токен пересекает провод один раз, редачится в логах (`FlagDescriptor.secret`), агенту не возвращается.
+- Поток PAT: `tengu jira auth login` → плагин проверяет токен на `GET /rest/api/2/myself` → `secrets.put("pat", …)` → Vault. Токен пересекает провод один раз, исключён из capture вместе со всеми ответами команды с `FlagDescriptor.secret`, агенту не возвращается.
 
 ## Auth хаба
 
@@ -101,6 +101,29 @@ interface ToolPlugin {
 Сервер (env): `TENGU_PORT` (8080), `TENGU_HUB_TOKENS`, `TENGU_VAULT_ADDR`, `TENGU_VAULT_TOKEN`, `TENGU_VAULT_MOUNT` (secret), `TENGU_VAULT_PREFIX` (tengu), `TENGU_JIRA_BASE_URL`, `TENGU_DEV_SECRETS`, `TENGU_DEV_SECRETS_DIR` (data — корень файлового стора dev-режима).
 
 CLI: `%APPDATA%\tengu\config.json` (Win) / `~/.config/tengu/config.json` — `{serverUrl, hubToken}` + кэш `manifest.json` (`fetchedAt`, `manifestVersion`).
+
+## Серверные логи
+
+Сервер владеет JSON-событиями и call-контекстом. Request UUID v4 создаётся до auth,
+возвращается в `X-Request-ID`; итоговый event содержит только проверенного userId
+и разрешённые имена descriptor. Coroutine-контекст хранится в `ApplicationCall`,
+в AsyncAppender передаются снимки строк/чисел/boolean/list, без MDC и сырых Throwable.
+HTTP JSON и CLI остаются прежними, manifestVersion не повышается.
+
+Доставка: SLF4J -> штатный Logback AsyncAppender (256, без раннего discard,
+neverBlock=false, maxFlushTime=1000) -> ConsoleAppender (System.out, immediateFlush)
+-> logstash encoder 9.0 (Jackson 3). После STDOUT отвечает инфраструктура.
+INFO/0 - defaults `TENGU_LOG_LEVEL`/`TENGU_LOG_RESPONSE_BODY`; библиотеки от WARN.
+Body capture допускает только прошедший auth/validation POST invoke, исключает
+`auth` и любой secret flag в descriptor, ограничен 16 384 UTF-8 байтами.
+
+Один JVM shutdown hook владеет остановкой engine, закрытием/ожиданием HTTP client,
+`server_stopped` и остановкой LoggerContext в этом порядке. Ktor hook отключён;
+start, partial failure и stop сериализуются одним lifecycle owner. Собственных
+очередей, logging threads, appender, encoder, facade или retry нет.
+
+[Полная схема, lifecycle, примеры и OTel mapping](docs/server-logging.md).
+Tracing/export spans относится к TNG-04; логи сами не создают spans.
 
 ## Разработка
 

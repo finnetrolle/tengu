@@ -38,7 +38,7 @@ specs/
 | [EPIC-03: Внешняя авторизация команд Tengu](epics/epic_03_external_authorization.md) | `Draft` | не декомпозирован | после уточнения контракта и пилотного провайдера |
 | [TNG-01: Сохранять пользовательский ORDER BY в Jira JQL](issues/issue_01_preserve_jira_jql_ordering.md) | `Ready for implementation` | не начата | 1 инженерный день |
 | [TNG-02: Добавить команду смены статуса Jira-задачи](issues/issue_02_jira_issue_transition.md) | `Blocked` | не начата | 2 инженерных дня |
-| [TNG-03: Структурированные серверные логи в STDOUT](issues/issue_03_server_stdout_logging.md) | `Ready for implementation` | не начата | не оценивалась |
+| [TNG-03: Структурированные серверные логи в STDOUT](issues/issue_03_server_stdout_logging.md) | `Done` | реализована, проверки пройдены | не оценивалась |
 | [TNG-04: W3C-трассировка вызовов Tengu CLI и сервера](issues/issue_04_w3c_distributed_tracing.md) | `Draft` | согласована цель | после технической проработки |
 
 ## Следующая работа

@@ -25,10 +25,8 @@ class FileSecretsStore(private val root: Path) : SecretsStore {
     private val json = Json { ignoreUnknownKeys = true }
 
     init {
-        log.warn(
-            "FileSecretsStore active — secrets stored UNENCRYPTED under " +
-                "${root.toAbsolutePath()}. Never use in production.",
-        )
+        log.atWarn().addKeyValue("event", "dev_secrets_enabled")
+            .log("FileSecretsStore active: secrets stored UNENCRYPTED. Never use in production.")
     }
 
     override suspend fun put(userId: String, tool: String, key: String, value: String) = mutex.withLock {
