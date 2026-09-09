@@ -1,0 +1,94 @@
+# Локальный Tengu в одном контейнере
+
+Этот профиль запускает только Tengu server. Jira PAT хранится в `tmpfs` внутри
+контейнера и исчезает при его остановке. Docker volume и файл с PAT на хосте не
+создаются.
+
+## 1. Запустить сервер
+
+Укажи URL Jira и подними контейнер:
+
+```sh
+export TENGU_JIRA_BASE_URL="https://jira.corp"
+docker compose -f compose.local.yml up --build -d
+```
+
+Сервер доступен только локально на `http://127.0.0.1:8080`. Проверка:
+
+```sh
+curl -s http://127.0.0.1:8080/v1/health
+```
+
+По умолчанию локальный hub token равен `tengu-local`. Если на машине есть другие
+пользователи, задай свой токен перед запуском контейнера:
+
+```sh
+export TENGU_HUB_TOKEN="$(openssl rand -hex 32)"
+docker compose -f compose.local.yml up --build -d
+```
+
+Hub token не является Jira PAT: он только разрешает CLI обращаться к локальному
+Tengu server.
+
+## 2. Настроить CLI
+
+Если бинарник ещё не установлен на macOS ARM:
+
+```sh
+sudo install -m 0755 \
+  cli/build/bin/macosArm64/releaseExecutable/tengu.kexe \
+  /usr/local/bin/tengu
+```
+
+Свяжи CLI с контейнером. Подставь значение `TENGU_HUB_TOKEN`, если переопределял
+его на предыдущем шаге:
+
+```sh
+tengu setup --url http://127.0.0.1:8080 --token tengu-local
+```
+
+## 3. Ввести Jira PAT без истории shell
+
+Выполни этот шаг самостоятельно в обычном Terminal.app или iTerm, не в чате и
+не в интегрированном терминале Codex:
+
+```sh
+printf 'Jira PAT: '
+IFS= read -r -s TENGU_JIRA_PAT
+printf '\n'
+printf '%s' "$TENGU_JIRA_PAT" | tengu jira auth login --token -
+unset TENGU_JIRA_PAT
+```
+
+PAT не отображается, не попадает в аргументы процесса и историю shell. Tengu
+проверяет его через Jira `/rest/api/2/myself`, после чего записывает в
+`/run/tengu-secrets` внутри контейнера.
+
+Проверить доступ можно без вывода метаданных токена:
+
+```sh
+tengu jira projects list
+```
+
+После этого Codex может пользоваться Jira только через команды `tengu jira ...`.
+Полное значение PAT сервер наружу не возвращает.
+
+## 4. Остановить
+
+```sh
+docker compose -f compose.local.yml stop
+```
+
+При остановке `tmpfs` уничтожается. После следующего `start` Jira PAT потребуется
+ввести заново. Чтобы удалить и сам контейнер:
+
+```sh
+docker compose -f compose.local.yml down
+```
+
+## Ограничение гарантии
+
+`tmpfs` не создаёт постоянный файл или Docker volume и очищается при остановке
+контейнера. Это не защита от администратора работающей машины, дампа памяти или
+swap операционной системы. Для защиты от форензики диска включи FileVault и не
+разрешай Docker использовать незашифрованный swap.

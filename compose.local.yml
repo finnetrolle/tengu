@@ -1,0 +1,21 @@
+services:
+  tengu:
+    build:
+      context: .
+    image: tengu:local
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      TENGU_HUB_TOKENS: local=${TENGU_HUB_TOKEN:-tengu-local}
+      TENGU_JIRA_BASE_URL: ${TENGU_JIRA_BASE_URL:?set TENGU_JIRA_BASE_URL}
+      TENGU_DEV_SECRETS: "1"
+      TENGU_DEV_SECRETS_DIR: /run/tengu-secrets
+    read_only: true
+    tmpfs:
+      - /run/tengu-secrets:rw,noexec,nosuid,nodev,mode=0700,uid=1001,gid=1001
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true

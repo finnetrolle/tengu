@@ -4,6 +4,7 @@
 
 - Архитектура и решения — [ARCHITECTURE.md](ARCHITECTURE.md)
 - Запуск на Windows (cmd/PowerShell) — [docs/windows.md](docs/windows.md)
+- Локальный одноразовый Docker с Jira PAT в памяти — [docs/local-docker.md](docs/local-docker.md)
 - Стандарт агентного интерфейса — `.agents/skills/axi/SKILL.md`
 
 ## Как выглядит для агента

@@ -3,6 +3,7 @@ FROM eclipse-temurin:21-jdk AS build
 WORKDIR /work
 COPY gradlew gradlew.bat settings.gradle.kts build.gradle.kts gradle.properties ./
 COPY gradle ./gradle
+COPY buildSrc ./buildSrc
 COPY protocol ./protocol
 COPY toon ./toon
 COPY toolkit ./toolkit
