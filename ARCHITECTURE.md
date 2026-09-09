@@ -54,7 +54,7 @@
 
 - `validate(descriptor, args, flags)` — чистая функция в `:protocol`, исполняется **на обеих сторонах**: CLI валидирует по кэшу манифеста до сети (exit 2 без раундтрипа), сервер перепроверяет (защита в глубину). Расхождение поведения исключено — один код.
 - **409 STALE_MANIFEST** → CLI обновляет манифест и ретраит один раз, агент этого не замечает. Плюс TTL кэша 24 ч и `tengu manifest refresh`.
-- `manifestVersion` бампируется при **любом** изменении поверхности (команды/флаги/переименования). Handshake версий проверяется end-to-end сценарием S8; e2e (S1–S8) гоняется в CI на каждый push.
+- `manifestVersion` бампируется при **любом** изменении поверхности (команды/флаги/переименования). Handshake версий проверяется end-to-end сценарием S8; e2e (S1–S8) запускается вручную через `bash scripts/e2e.sh` перед интеграцией.
 - Таймаут 30 с; недоступный сервер → `error: cannot reach tengu server at <url>` + setup-хинт, exit 1.
 
 ## Контракт плагина
@@ -138,7 +138,7 @@ bash scripts/e2e.sh                            # сценарии S1–S8 нат
 docker compose up -d                           # прод-стенд: сервер + dev-Vault
 ```
 
-CLI — Kotlin/Native: дев-режим и релиз на одном нативном бинаре (mingwX64 — WinHttp, linuxX64 — статический Curl, macosArm64 — Darwin/NSURLSession; все самодостаточны, JVM на машинах агентов не нужна). macOS-таргет создаётся только на mac-хосте: K/N не кросс-компилирует Apple-таргеты с Linux/Windows (CI на Linux его не собирает). Первая сборка качает тулчейн konan (~1 ГБ в `~/.konan`). Нюанс: у ktor-client-curl 3.4+ бандл статических либ линкуется в ломающем порядке (KTOR-9460) — обход в `cli/build.gradle.kts` (`extractCurlStatic`). Docker-сервер — JVM (multi-stage, temurin).
+CLI — Kotlin/Native: дев-режим и релиз на одном нативном бинаре (mingwX64 — WinHttp, linuxX64 — статический Curl, macosArm64 — Darwin/NSURLSession; все самодостаточны, JVM на машинах агентов не нужна). macOS-таргет создаётся только на mac-хосте: K/N не кросс-компилирует Apple-таргеты с Linux/Windows. Первая сборка качает тулчейн konan (~1 ГБ в `~/.konan`). Нюанс: у ktor-client-curl 3.4+ бандл статических либ линкуется в ломающем порядке (KTOR-9460) — обход в `cli/build.gradle.kts` (`extractCurlStatic`). Docker-сервер — JVM (multi-stage, temurin).
 
 ## Текущий статус (MVP 0.1.0)
 

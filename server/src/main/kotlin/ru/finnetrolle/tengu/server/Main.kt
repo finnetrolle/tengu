@@ -152,7 +152,7 @@ private fun serverDeps(httpClient: HttpClient): ServerDeps {
 
     val secretsStore: SecretsStore =
         if (System.getenv("TENGU_DEV_SECRETS") == "1")
-            // корень переопределяется TENGU_DEV_SECRETS_DIR — e2e/CI изолируют стор от локальных данных
+            // TENGU_DEV_SECRETS_DIR изолирует хранилище e2e от локальных данных
             FileSecretsStore(Path.of(System.getenv("TENGU_DEV_SECRETS_DIR") ?: "data"))
         else VaultSecretsStore.fromEnv(httpClient)
 

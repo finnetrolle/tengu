@@ -65,7 +65,7 @@ Key invariants:
 - **Usage validation is shared `Validate` entry points (`tool`/`command`/`invoke`) in `:protocol`, executed on both sides**: CLI validates against cached manifest before any network call (usage error → exit 2, no roundtrip); server revalidates (defense in depth).
 - **Exit codes / streams**: usage errors → exit 2, runtime errors → exit 1, all structural output → stdout, stderr stays empty.
 - **409 STALE_MANIFEST** → CLI refreshes manifest and retries once, invisible to the agent. Manifest cache TTL 24 h; also self-heals on unknown tool/command.
-- **`manifestVersion` must be bumped on ANY surface change** (commands/flags/renames). Handshake verified end-to-end by scenario S8; e2e runs in CI on every push.
+- **`manifestVersion` must be bumped on ANY surface change** (commands/flags/renames). Handshake verified end-to-end by scenario S8; run `bash scripts/e2e.sh` manually before integration.
 - **Secrets**: Vault in prod (`secret/tengu/{user}/{tool}`); `FileSecretsStore` only for dev/test behind `TENGU_DEV_SECRETS=1` (unencrypted). Plugin secret scopes are limited to (user, tool) pairs - other users' secrets are unreachable by construction. Secret flag values support stdin via `-`.
 
 ## Conventions
@@ -75,5 +75,5 @@ Key invariants:
 - Extend `scripts/e2e.sh` when user-visible CLI/server flows change. Note: S3 hardcodes the jira command count (`commands[9]`) - update it when the tool surface changes.
 - Detekt config: `config/detekt/` (+ `detekt-toon.yml` for `:toon`). Run `./gradlew check` before submitting.
 - Commits: concise, single-line, area-prefixed (`cli: ...`, `server: ...`).
-- CI (`.github/workflows/ci.yml`): full build + Windows cross-compile + E2E must pass.
+- Before integration, run the full build, Windows cross-compile and E2E manually; all must pass.
 - Never commit hub tokens, Jira PATs, Vault credentials, `.env`, or generated `data/`.

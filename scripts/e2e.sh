@@ -40,7 +40,7 @@ expect_out() { # name needle cmd...
 }
 
 echo "== сборка =="
-# CLI — native-only: нативный бинарник под ОС хоста (mingw на Windows-дев-машине, linux в CI)
+# CLI: native-only бинарник под ОС хоста (mingw на Windows, linux на Linux)
 case "$(uname -s)" in
     Linux*)
         ./gradlew :cli:linkReleaseExecutableLinuxX64 -q || { echo "build failed"; exit 1; }

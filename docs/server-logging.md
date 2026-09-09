@@ -243,4 +243,5 @@ Dockerfile, проверяет INFO/0 и DEBUG/1, останавливает к�
 проверяет stdout, stderr, lifecycle и writable layer независимым Python parser.
 Unicode fixtures от настоящего encoder дополнительно проверяются Python по HTTP bytes.
 При ошибке сценарий возвращает nonzero и сообщает каталог диагностических файлов.
-Linux CI выполняет эту проверку после прежних S1-S8.
+Перед интеграцией запустить эту проверку вручную после `bash scripts/e2e.sh`
+(S1-S8) в поддерживаемом Linux окружении.

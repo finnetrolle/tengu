@@ -3,6 +3,8 @@
 Исходный согласованный контракт: `specs/issues/issue_03_server_stdout_logging.md`
 в commit `6d0ee17c5ed5fe5ccfaf79b49a34e46c114d11bd`. Issue сохранена, требования
 и non-goals доступны в исходной ревизии. Базовое рабочее дерево было чистым.
+По уточнению пользователя от 2026-09-10 автоматический CI удалён; требования
+к сборке и E2E сохранены с ручным запуском.
 Ветка: `codex/tng-03-stdout-logging`.
 
 Route: critical; execution: inline. Рекомендация skill - gpt-6-astra/xhigh;
@@ -36,7 +38,7 @@ charset (текстовая диагностика Logback), сырой CIO star
 | AC3 body и исключения | Окончательный TextContent после HTTP transformations; Ok/Noop/Err; body off DEBUG/INFO; auth и secret descriptors с/без optional flag, при Ok и Err; prevalidation/401/health/manifest; plugin throws | Только разрешённые ответы содержат три body fields; строка совпадает с HTTP body, включая helpHints. Исключения не пропускают входные markers или message/cause/suppressed. Бизнес-текст с token= сохраняется. Exact sizes 16383/16384/16385; emoji на границе обрезается целиком, без replacement character | Полученный HTTP body, буквальный wire envelope, Unicode fixture; размер стандартным UTF-8 encoding. Отдельный Python parser проверяет actual encoded bytes, production prefix helper не используется | V1, V3, V4 PASS |
 | AC4 env и фильтрация | Java main из installDist/lib/* с отдельными stdout/stderr и child-only env; HTTP testApplication с isolated LoggerContext | Defaults INFO/0; DEBUG/INFO/WARN/ERROR x body0/1; health/success/400/500 отфильтрованы по таблице, body не меняет уровень. Library INFO отсутствует, WARN виден без event. 11 invalid cases дают один configuration ERROR, exit1, правильные key/allowed_values, без raw values и listener | Литеральные ожидаемые уровни и env values. Invalid child наблюдается TCP probes весь срок жизни, одновременно проверяется единственное configuration event до server_starting; отсутствие Vault config выявляет слишком раннее создание сервиса | V1 PASS |
 | AC5 упаковка и остановка | Настоящий Dockerfile/ENTRYPOINT bin/server, без TTY, fake alice/bob, tmpfs dev secrets; INFO/0 и DEBUG/1; docker stop --time 10 | JSON Lines stdout, stderr пуст, lifecycle starting/ready/stopping/stopped ровно один раз и по порядку; completed requests видны после drain; exit0/143, без SIGKILL137; нет logging files в writable layer/tmpfs | Python standard-library JSON/schema/bytes; HTTP transcripts с IDs/body; Docker inspect и diff; real encoder Unicode fixtures | V4 PASS |
-| AC6 границы, docs и регрессии | Прежние module tests + native CLI/server S1-S8; static diff XML/dependencies/modules и Markdown docs; CI workflow | HTTP/CLI contracts прежние, manifestVersion=4; стандартные AsyncAppender/ConsoleAppender/encoder, root WARN, фиксированная очередь. Документы содержат schema/types, success/error JSON, env, body rules, lifecycle и OTel mapping; Docker smoke после S1-S8 в CI | Старые тесты и CLI stdout/exit assertions; source diff против исходной ревизии, XML parse и Markdown link validation. Runtime/oracle для docs не применимы: структурный контракт | V1/V2/V5/V6 PASS |
+| AC6 границы, docs и регрессии | Прежние module tests + native CLI/server S1-S8; static diff XML/dependencies/modules и Markdown docs; скрипты ручных проверок | HTTP/CLI contracts прежние, manifestVersion=4; стандартные AsyncAppender/ConsoleAppender/encoder, root WARN, фиксированная очередь. Документы содержат schema/types, success/error JSON, env, body rules, lifecycle и OTel mapping; Docker smoke запускается вручную после S1-S8 | Старые тесты и CLI stdout/exit assertions; source diff против исходной ревизии, XML parse и Markdown link validation. Runtime/oracle для docs не применимы: структурный контракт | V1/V2/V4/V5/V6 PASS |
 
 ## Non-goals ledger
 
@@ -93,10 +95,12 @@ TENGU_LOG_RESPONSE_BODY, AsyncAppender, ShutdownHook, trace_id/span_id.
 Runtime docs обновлены; будущая интеграция TNG-04 не реализуется здесь.
 
 Diff ограничен server production/tests/resources, encoder dependency/catalog,
-Docker logging harness и CI, logging docs и согласованным closure metadata.
+Docker logging harness, logging docs и согласованным closure metadata.
 Исходное дерево было чистым. Дополнительно затронуты specs/MVP.md (убран
 завершённый TNG-03 из frontier) и связанная TNG-04 (интеграция теперь описана
 относительно реализованного logging); её статус Draft и scope не менялись.
+По уточнению пользователя также удалён workflow GitHub Actions и обновлены
+связанные инструкции AGENTS.md/CLAUDE.md; проверки запускаются вручную.
 Новые docs/tng03-evidence.md и docs/server-logging.md обслуживают приёмку и контракт.
 Work-item validator в проекте не найден; вместо отсутствующей команды выполнена
 однократная проверка ID, статуса, регистрации и локальных Markdown links после closure.

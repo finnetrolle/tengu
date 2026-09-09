@@ -23,7 +23,7 @@ Use `kotlin.test`; name test classes and files `*Test`. Add focused module tests
 
 ## Commit & Pull Request Guidelines
 
-History favors concise, single-line commits, often prefixed by the affected area, such as `cli: ...` or `gitignore: ...`. Keep each commit focused. Pull requests should explain the behavior and affected modules, link the issue when applicable, list verification commands, and include representative CLI output for protocol, help, or rendering changes. CI must pass the full build, Windows cross-compile, and E2E suite.
+History favors concise, single-line commits, often prefixed by the affected area, such as `cli: ...` or `gitignore: ...`. Keep each commit focused. Pull requests should explain the behavior and affected modules, link the issue when applicable, list verification commands, and include representative CLI output for protocol, help, or rendering changes. Before integration, run the full build, Windows cross-compile and E2E suite manually; all must pass.
 
 ## Security & Configuration
 

@@ -273,7 +273,7 @@ TNG-04 не блокирует реализацию логирования.
 | `server/src/test/.../LogEncodingTest.kt` (новый) | Проверка байтов настоящего encoder/AsyncAppender |
 | `server/src/test/.../LoggingProcessTest.kt` (новый) | Отдельный JVM процесс, env, exit и listener |
 | `scripts/e2e-logging.sh` и `scripts/assert-logging.py` (новые) | Docker fixture и независимые JSON/UTF-8 assertions |
-| `scripts/e2e.sh`, `.github/workflows/ci.yml` | Сохранить S1-S8; после них в Linux CI запускать контейнерную проверку |
+| `scripts/e2e.sh` | Сохранить S1-S8; после них вручную запускать контейнерную проверку в Linux окружении |
 | `README.md`, `server/README.md`, `ARCHITECTURE.md` | Настройки, schema, примеры, OTel mapping и границы ответственности |
 
 Не менять production-код `:cli`, `:protocol`, `:toolkit` или Jira-команд.
@@ -416,7 +416,7 @@ Oracle - заданные маркеры и имя кадра. Ожидаютс�
   тестах и сценариях S1-S8; сборка и Windows cross-compile проходят.
 - Документация содержит поля и типы, JSON-пример успешного и ошибочного события,
   env/defaults, ограничения тела, работу AsyncAppender, lifecycle и OTel mapping.
-- Контейнерный smoke test добавлен в Linux CI. Существующий scripts/e2e.sh
+- Контейнерный smoke test запускается вручную после S1-S8. Существующий scripts/e2e.sh
   поддерживает Linux/Windows shell; на macOS не объявлять этот suite пройденным
   без поддерживаемого Linux окружения.
 - Проверки производительности/перегрузки и доставки до OTel не требуются.
