@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Сообщить об уязвимости приватно
+    url: https://github.com/finnetrolle/tengu/security/advisories/new
+    about: Уязвимости и чувствительные данные не следует публиковать в issues.

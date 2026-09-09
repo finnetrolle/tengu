@@ -1,0 +1,23 @@
+name: Предложение / Feature request
+description: Новый сценарий, интеграция или улучшение.
+title: "idea: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Какую проблему нужно решить
+      description: Кто столкнулся с проблемой и при каком действии?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Ожидаемый результат
+      description: Опишите сценарий или пример команды и полезного результата.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Альтернативы и ограничения
+      description: Как решаете задачу сейчас? Какие условия важно сохранить?

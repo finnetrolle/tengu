@@ -6,9 +6,11 @@
 
 ## 1. Запустить сервер
 
-Укажи URL Jira и подними контейнер:
+Нужны Docker с Compose и Git. Получи исходники, укажи URL Jira и подними контейнер:
 
 ```sh
+git clone https://github.com/finnetrolle/tengu.git
+cd tengu
 export TENGU_JIRA_BASE_URL="https://jira.corp"
 docker compose -f compose.local.yml up --build -d
 ```
@@ -32,13 +34,9 @@ Tengu server.
 
 ## 2. Настроить CLI
 
-Если бинарник ещё не установлен на macOS ARM:
-
-```sh
-sudo install -m 0755 \
-  cli/build/bin/macosArm64/releaseExecutable/tengu.kexe \
-  /usr/local/bin/tengu
-```
+Установи CLI для своей ОС по [инструкции установки](installation.md). При сборке
+macOS CLI из исходников сначала выполни `./gradlew :cli:linkReleaseExecutableMacosArm64`
+на Mac с полным Xcode.
 
 Свяжи CLI с контейнером. Подставь значение `TENGU_HUB_TOKEN`, если переопределял
 его на предыдущем шаге:
@@ -50,7 +48,8 @@ tengu setup --url http://127.0.0.1:8080 --token tengu-local
 ## 3. Ввести Jira PAT без истории shell
 
 Выполни этот шаг самостоятельно в обычном Terminal.app или iTerm, не в чате и
-не в интегрированном терминале Codex:
+не в интегрированном терминале Codex. Блок рассчитан на Bash; из zsh сначала
+запусти `bash`. На Windows используй [ввод PAT через PowerShell](windows.md#4-подключить-jira):
 
 ```sh
 printf 'Jira PAT: '
