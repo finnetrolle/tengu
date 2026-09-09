@@ -1,15 +1,43 @@
-# tengu
+# Tengu
 
-Хаб тулов для ИИ-агентов: единый AXI-совместимый CLI (`tengu`), через который агенты discover'ят корпоративные системы (Jira, …) и вызывают их. Плагины и доступы живут на центральном сервере; агент про креды не знает.
+**Корпоративные инструменты для ИИ-агентов через один CLI.**
 
-- Архитектура и решения — [ARCHITECTURE.md](ARCHITECTURE.md)
-- Запуск на Windows (cmd/PowerShell) — [docs/windows.md](docs/windows.md)
-- Локальный одноразовый Docker с Jira PAT в памяти — [docs/local-docker.md](docs/local-docker.md)
-- Стандарт агентного интерфейса — `.agents/skills/axi/SKILL.md`
+Tengu позволяет агенту узнать доступные команды и работать с Jira через `tengu`.
+Интеграции исполняются на центральном сервере, где хранятся пользовательские PAT.
+Для обычных вызовов агенту нужен доступ к хабу, без передачи ему Jira PAT.
+
+[Установка](docs/installation.md) · [Быстрый старт](#быстрый-старт) · [Архитектура](ARCHITECTURE.md) · [Планы](specs/WORK_ITEMS.md) · [Участие](CONTRIBUTING.md)
+
+**Статус: MVP 0.1.0.** Доступны Jira через REST API v2 с PAT и диагностика хаба.
+CLI работает на Linux x64, Windows x64 и macOS Apple Silicon; сервер требует JDK 21+
+или Docker. API и команды могут меняться до стабилизации версии 1.0.
+
+## Зачем Tengu
+
+- **Один вход для агента.** `tengu` показывает инструменты, а `--help` объясняет команды и флаги.
+- **Доступы на сервере.** Плагин получает секреты только своего пользователя и инструмента; поддерживаются Vault и локальный режим разработки.
+- **Вывод для автоматизации.** Компактные таблицы, подсказки следующего шага и явные коды завершения.
+- **Тонкий клиент.** Нативный CLI работает без JVM и узнаёт команды из серверного манифеста.
+
+```mermaid
+flowchart LR
+    Agent[ИИ-агент] --> CLI[tengu CLI]
+    CLI -->|Манифест и вызовы| Hub[Tengu server]
+    Hub --> Jira[Jira]
+    Hub --> Secrets[Vault / dev-хранилище]
+```
+
+Интерфейс следует [AXI (Agent eXperience Interface)](.agents/skills/axi/SKILL.md),
+стандарту командных инструментов для агентов. Структурированный вывод использует
+[TOON (Token-Oriented Object Notation)](https://toonformat.dev), компактное текстовое
+представление объектов и таблиц. Успех возвращает exit 0, ошибка использования - 2,
+ошибка выполнения - 1; структурированный вывод CLI идёт в stdout.
 
 ## Как выглядит для агента
 
-```sh
+Пример с подключённой Jira и демонстрационными задачами:
+
+```text
 $ tengu
 bin: tengu
 description: Agent tool hub: discover and invoke corporate tools
@@ -20,120 +48,130 @@ help[2]:
   Run `tengu tools show <tool>` for what a tool can do
   Run `tengu <tool> <command> --help` for command usage
 
-$ tengu jira issues list --project FOO
+$ tengu jira issues list --project FOO --limit 2
 count: 2 of 213 total
 issues[2]{key,title,state}:
   FOO-1,Fix auth bug,Open
-  FOO-2,Add pagination,Closed
+  FOO-2,Add pagination,Open
 help[1]: Run `tengu jira issues list --project FOO --start-at 2` for the next page
-
-$ tengu jira issues list --stat open
-error: unknown flag --stat for `jira issues list`
-help[1]:
-  "valid flags for `jira issues list`: --project, --state, --assignee, --jql, --limit, --start-at, --fields (--help always allowed)"
 ```
 
-Ошибки использования — exit 2, рантайм-ошибки — exit 1, всё структурное в stdout, stderr пуст.
+Jira-плагин умеет перечислять проекты, искать и просматривать задачи и комментарии,
+создавать задачи и добавлять комментарии. [Полный список команд](plugins/jira/README.md).
 
-## Поднятие сервера и сборка под команду `tengu`
+## Быстрый старт
 
-### Шаг 0. Требования
+Первый запуск ниже проверяет CLI и сервер без Jira и внешних учётных данных.
+Нужны Git и JDK 21+. Для сборки CLI на macOS нужен полный Xcode.
+Готовые бинарники и установка из исходников описаны в [инструкции установки](docs/installation.md).
+Для PowerShell и cmd есть [отдельный quickstart](docs/windows.md).
 
-JDK 21+ (проверено на 25). Если java нет в PATH — укажи `JAVA_HOME`:
+### 1. Получить исходники и запустить сервер
 
-```sh
-export JAVA_HOME=~/.jdks/openjdk-25    # пример: IntelliJ-кладка ~/.jdks
-java -version                          # проверка
-```
-
-### Шаг 1. Собрать проект
-
-```sh
-cd ~/dev/tengu
-./gradlew build
-```
-
-Первая сборка скачивает Gradle 9.7.1 и зависимости — примерно 3 минуты. `BUILD SUCCESSFUL` = все модули и тесты зелёные.
-
-### Шаг 2. Поднять сервер (терминал 1)
+Linux / macOS, терминал 1:
 
 ```sh
-export JAVA_HOME=~/.jdks/openjdk-25
+git clone https://github.com/finnetrolle/tengu.git
+cd tengu
+java -version
 
-TENGU_HUB_TOKENS="dev=h-dev123" \
+TENGU_HUB_TOKENS="dev=tengu-local" \
 TENGU_DEV_SECRETS=1 \
-TENGU_JIRA_BASE_URL="https://jira.corp" \
 ./gradlew :server:run
 ```
 
-- `TENGU_HUB_TOKENS` — список `пользователь=токен` хаба (тут: пользователь `dev`, токен `h-dev123`)
-- `TENGU_DEV_SECRETS=1` — секреты (PAT) в файл вместо Vault; только для разработки (корень — `TENGU_DEV_SECRETS_DIR`, по умолчанию `data/`, файлы `data/{user}/{tool}.json`)
-- `TENGU_JIRA_BASE_URL` — адрес твоего Jira; без неё jira-тул не зарегистрируется (будет только `status`)
+`tengu-local` - демонстрационный hub token для локального запуска. Он отличается
+от Jira PAT. Сервер слушает порт 8080; для общего стенда нужны собственные токены
+и ограничение сетевого доступа. Первая сборка скачивает Gradle и зависимости.
 
-Сервер готов, когда в логе появится `Responding at http://127.0.0.1:8080`. Проверка:
+### 2. Собрать и установить CLI
 
-```sh
-curl -s http://localhost:8080/v1/health
-# {"serverVersion":"0.1.0","tools":2,"manifestVersion":3}
-```
+В терминале 2 перейди в клонированный каталог `tengu` и выполни команду для своей ОС:
 
-Останов — Ctrl+C.
+| Платформа | Команда | Результат |
+|---|---|---|
+| Linux x64 | `./gradlew :cli:linkReleaseExecutableLinuxX64` | `cli/build/bin/linuxX64/releaseExecutable/tengu.kexe` |
+| macOS Apple Silicon | `./gradlew :cli:linkReleaseExecutableMacosArm64` | `cli/build/bin/macosArm64/releaseExecutable/tengu.kexe` |
+| Windows x64 | `.\gradlew.bat :cli:linkReleaseExecutableMingwX64` | `cli\build\bin\mingwX64\releaseExecutable\tengu.exe` |
 
-### Шаг 3. Собрать CLI
-
-```sh
-./gradlew :cli:linkReleaseExecutableMingwX64   # Windows → tengu.exe
-./gradlew :cli:linkReleaseExecutableLinuxX64   # Linux → tengu.kexe (можно с любого хоста)
-```
-
-Исполняемый файл: `cli/build/bin/mingwX64/releaseExecutable/tengu.exe` (Windows) / `cli/build/bin/linuxX64/releaseExecutable/tengu.kexe` (Linux). Бинарь самодостаточный — JVM на машине не нужна. Первая сборка скачивает тулчейн Kotlin/Native (~1 ГБ в `~/.konan`).
-
-### Шаг 4. Связать CLI с сервером (один раз)
+На Linux установи бинарник в пользовательский каталог:
 
 ```sh
-cli/build/bin/mingwX64/releaseExecutable/tengu.exe setup --url http://localhost:8080 --token h-dev123
-# setup: configured for http://localhost:8080
+mkdir -p "$HOME/.local/bin"
+install -m 0755 cli/build/bin/linuxX64/releaseExecutable/tengu.kexe "$HOME/.local/bin/tengu"
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Конфиг уходит в `%APPDATA%\tengu` (Windows) / `~/.config/tengu` (Linux).
+На macOS замени `linuxX64` на `macosArm64`. Добавь каталог в PATH своей оболочки,
+если хочешь использовать `tengu` в новых терминалах. Для уже установленного CLI этот шаг не нужен.
 
-### Шаг 5. Короткая команда (опционально)
+### 3. Проверить первый вызов
 
 ```sh
-alias tengu=~/dev/tengu/cli/build/bin/mingwX64/releaseExecutable/tengu.exe
-# или: скопируй tengu.exe/tengu.kexe в каталог из PATH
+curl -fsS http://127.0.0.1:8080/v1/health
+tengu setup --url http://127.0.0.1:8080 --token tengu-local
+tengu
+tengu status
 ```
 
-### Шаг 6. Проверка
+В каталоге появится инструмент `status`; его вызов покажет версию и uptime сервера.
+`setup` сохраняет конфигурацию после успешного подключения: `~/.config/tengu`
+на Linux/macOS или `%APPDATA%\tengu` на Windows. Остановить сервер можно через Ctrl+C.
+
+### 4. Подключить Jira
+
+Перезапусти сервер, добавив URL своей Jira:
 
 ```sh
-tengu            # дашборд доступных тулов
-tengu status     # полный roundtrip через сервер
+TENGU_HUB_TOKENS="dev=tengu-local" \
+TENGU_DEV_SECRETS=1 \
+TENGU_JIRA_BASE_URL="https://jira.example.com" \
+./gradlew :server:run
 ```
 
-## Проверка всего цикла
+Введи PAT самостоятельно в обычном терминале. Следующий блок рассчитан на Bash;
+из другой оболочки сначала запусти `bash`:
 
-```sh
-./gradlew build       # юнит/golden-тесты всех модулей
-./gradlew :jacocoTestReport  # JVM coverage: XML для SonarQube + HTML-отчёт
-bash scripts/e2e.sh   # сценарии S1–S8, поднимает свой сервер на :8080
+```bash
+printf 'Jira PAT: '
+IFS= read -r -s TENGU_JIRA_PAT
+printf '\n'
+printf '%s' "$TENGU_JIRA_PAT" | tengu jira auth login --token -
+unset TENGU_JIRA_PAT
+
+tengu jira projects list
+tengu jira issues list --project FOO --limit 5
 ```
 
-JaCoCo объединяет JVM-тесты `protocol`, `toon`, `toolkit`, `plugins:jira` и `server`.
-HTML-отчёт: `build/reports/jacoco/test/html/index.html`; XML для SonarQube:
-`build/reports/jacoco/test/jacocoTestReport.xml`. Native-only модуль `cli` в JaCoCo не входит.
+Замени `FOO` ключом проекта из списка. PAT проверяется через Jira и сохраняется на
+сервере. В режиме `TENGU_DEV_SECRETS=1` хранилище незашифровано: `data/{user}/{tool}.json`.
+Для одноразового запуска с PAT в памяти используй [локальный Docker-профиль](docs/local-docker.md).
 
-Для живого S6-сценария: `TENGU_E2E_JIRA_URL`, `TENGU_E2E_JIRA_PAT`, `TENGU_E2E_JIRA_PROJECT`.
+## Ограничения MVP
 
-## Продакшен-стенд
+- Авторизация хаба использует статичные bearer-токены; SSO/OIDC пока нет.
+- Создание задач и комментариев выполняется сразу. Подтверждение внешних изменений находится в [планах](specs/WORK_ITEMS.md).
+- CLI-таргеты для Intel Mac и Linux ARM пока не объявлены.
+- `docker-compose.yml` запускает **тестовый стенд с dev-Vault**. Для production нужны отдельно настроенный Vault KV v2, HTTPS и управление доступом; см. [документацию сервера](server/README.md).
 
-```sh
-cat > .env <<EOF
-TENGU_HUB_TOKENS=alice=h-xxx,bob=h-yyy
-TENGU_JIRA_BASE_URL=https://jira.corp
-TENGU_VAULT_TOKEN=<vault token>
-EOF
-docker compose up -d                  # сервер + dev-Vault
-```
+## Документация и разработка
 
-Секреты (PAT) пользователей хранятся в Vault (`secret/tengu/{user}/{tool}`); `TENGU_DEV_SECRETS=1` переключает на незашифрованный файловый стор — только для разработки.
+| Раздел | Содержание |
+|---|---|
+| [Установка](docs/installation.md) | Архивы релиза, проверка SHA256, сборка CLI и запуск серверного дистрибутива |
+| [Windows](docs/windows.md) | Запуск сервера и CLI, ввод Jira PAT в PowerShell |
+| [Локальный Docker](docs/local-docker.md) | Один контейнер, PAT в tmpfs |
+| [Архитектура](ARCHITECTURE.md) | Модули, протокол, границы плагинов и секретов |
+| [SDK плагинов](toolkit/README.md) | Контракт нового инструмента |
+| [CLI](cli/README.md) / [сервер](server/README.md) | Поведение, конфигурация и устройство модулей |
+| [Участие](CONTRIBUTING.md) | Задачи, локальные проверки и pull requests |
+| [Безопасность](SECURITY.md) | Приватное сообщение об уязвимости и границы защиты |
+| [Реестр задач](specs/WORK_ITEMS.md) | Текущие планы и статусы реализации |
+| [Ручной выпуск](docs/releasing.md) | Подготовка архивов и публикация версии |
+
+Основная локальная проверка: `./gradlew check`. Сборка всех модулей: `./gradlew build`.
+Подробнее о тестах и E2E - в [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Лицензия
+
+[MIT](LICENSE), Copyright (c) 2026 Maksim Syachin.

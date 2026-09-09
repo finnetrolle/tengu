@@ -7,3 +7,6 @@ bin/
 data/
 *.log
 .claude/
+.env
+.env.*
+!.env.example

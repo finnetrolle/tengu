@@ -1,0 +1,43 @@
+name: Ошибка / Bug report
+description: Воспроизводимая ошибка CLI, сервера или плагина.
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Об уязвимостях сообщайте приватно: https://github.com/finnetrolle/tengu/security/advisories/new.
+        Удалите токены, PAT, корпоративные URL и данные из команд и логов.
+  - type: input
+    id: version
+    attributes:
+      label: Версия или commit
+      description: Вывод tengu --version и версия сервера, если известна.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Окружение
+      placeholder: "macOS ARM64, CLI из релиза, сервер в Docker"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как воспроизвести
+      description: Минимальная последовательность действий с фиктивными данными.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемое поведение
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактическое поведение
+      description: Добавьте команду, вывод и exit code, если применимо.
+    validations:
+      required: true

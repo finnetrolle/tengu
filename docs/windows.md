@@ -1,124 +1,108 @@
-# Запуск tengu-сервера на Windows
+# Быстрый старт на Windows
 
-Инструкция для cmd и PowerShell. Для Git Bash подойдёт [общий quickstart в README](../README.md).
+Нужны Windows x64, Git и JDK 21+ в PATH. Готовый CLI не требует JVM; JVM нужна
+серверу и сборке из исходников. [Архивы релиза и установка](installation.md).
 
-## 0. Java
+## 1. Получить исходники
 
-Нужен JDK 21+ (проверено на 25). Проверка:
+PowerShell или cmd:
 
 ```powershell
+git clone https://github.com/finnetrolle/tengu.git
+cd tengu
 java -version
 ```
 
-Если команда не найдена — установи JDK (например, [Adoptium Temurin 25](https://adoptium.net/)) или используй уже имеющийся `~/.jdks/openjdk-25`.
+Если Java не найдена, установи JDK 21+ и настрой `JAVA_HOME` на каталог JDK,
+а `%JAVA_HOME%\bin` добавь в PATH. Открой новый терминал после изменения PATH.
 
-**Переменные на одну сессию** (PowerShell):
+## 2. Запустить сервер без Jira
 
-```powershell
-$env:JAVA_HOME = "$env:USERPROFILE\.jdks\openjdk-25"
-$env:Path = "$env:JAVA_HOME\bin;$env:Path"
-```
-
-(cmd):
-
-```bat
-set JAVA_HOME=%USERPROFILE%\.jdks\openjdk-25
-set PATH=%JAVA_HOME%\bin;%PATH%
-```
-
-**Переменные навсегда** (выполнить один раз в PowerShell, подхватят только новые терминалы):
+PowerShell, терминал 1 из каталога `tengu`:
 
 ```powershell
-[Environment]::SetEnvironmentVariable("JAVA_HOME", "$env:USERPROFILE\.jdks\openjdk-25", "User")
-$dir = "$([Environment]::GetEnvironmentVariable('JAVA_HOME','User'))\bin"
-$old = [Environment]::GetEnvironmentVariable("Path", "User")
-[Environment]::SetEnvironmentVariable("Path", "$dir;$old", "User")
-```
-
-## 1. Сборка проекта
-
-```powershell
-cd $env:USERPROFILE\dev\tengu
-.\gradlew.bat build
-```
-
-Первая сборка скачивает Gradle 9.7.1 и зависимости — примерно 3 минуты. Дождись `BUILD SUCCESSFUL`.
-
-## 2. Запуск сервера
-
-Переменные окружения и запуск (PowerShell):
-
-```powershell
-cd $env:USERPROFILE\dev\tengu
-$env:TENGU_HUB_TOKENS   = "dev=h-dev123"
-$env:TENGU_DEV_SECRETS  = "1"
-$env:TENGU_JIRA_BASE_URL = "https://jira.corp"   # твой Jira; без него jira-тул не загрузится
-
+$env:TENGU_HUB_TOKENS = "dev=tengu-local"
+$env:TENGU_DEV_SECRETS = "1"
 .\gradlew.bat :server:run
 ```
 
-(cmd):
+cmd:
 
 ```bat
-cd %USERPROFILE%\dev\tengu
-set TENGU_HUB_TOKENS=dev=h-dev123
+set TENGU_HUB_TOKENS=dev=tengu-local
 set TENGU_DEV_SECRETS=1
-set TENGU_JIRA_BASE_URL=https://jira.corp
 gradlew.bat :server:run
 ```
 
-Расшифровка переменных:
+`tengu-local` - тестовый hub token для локального запуска, не Jira PAT.
+Сервер слушает порт 8080. Остановить его можно через Ctrl+C.
+Если порт занят, останови другой экземпляр сервера или задай `TENGU_PORT` и
+используй этот же порт в командах ниже.
 
-| Переменная | Значение | Зачем |
-|---|---|---|
-| `TENGU_HUB_TOKENS` | `пользователь=токен` | кто допущен к хабу; здесь пользователь `dev`, токен `h-dev123` |
-| `TENGU_DEV_SECRETS` | `1` | секреты (PAT) в файл вместо Vault; только для разработки |
-| `TENGU_DEV_SECRETS_DIR` | путь | корень файлового хранилища секретов (по умолчанию `data\`) |
-| `TENGU_JIRA_BASE_URL` | URL Jira | регистрирует jira-плагин; без неё останется только тул `status` |
-| `TENGU_PORT` | число | порт, по умолчанию 8080 |
+## 3. Собрать CLI и проверить подключение
 
-Сервер готов, когда в логе появится:
-
-```
-Responding at http://127.0.0.1:8080
-```
-
-Проверка из другого окна (curl встроен в Windows 10+):
+PowerShell, терминал 2 из того же каталога `tengu`:
 
 ```powershell
-curl http://localhost:8080/v1/health
-# {"serverVersion":"0.1.0","tools":2,"manifestVersion":2}
-```
-
-Останов сервера — `Ctrl+C` в его окне.
-
-**Если порт 8080 занят** (например, сервер упал, а java-процесс остался):
-
-```powershell
-netstat -ano | findstr :8080     # последняя колонка — PID
-taskkill /PID <PID> /F
-```
-
-## 3. CLI `tengu` (второе окно)
-
-```powershell
-cd $env:USERPROFILE\dev\tengu
 .\gradlew.bat :cli:linkReleaseExecutableMingwX64
-$tengu = ".\cli\build\bin\mingwX64\releaseExecutable\tengu.exe"
-& $tengu setup --url http://localhost:8080 --token h-dev123
-& $tengu                                          # дашборд доступных тулов
+$tengu = (Resolve-Path ".\cli\build\bin\mingwX64\releaseExecutable\tengu.exe").Path
+curl.exe -fsS http://127.0.0.1:8080/v1/health
+& $tengu setup --url http://127.0.0.1:8080 --token tengu-local
+& $tengu
+& $tengu status
 ```
 
-Бинарь самодостаточный (JVM не нужна). Первая сборка скачивает тулчейн Kotlin/Native (~1 ГБ в `%USERPROFILE%\.konan`). Конфиг сохраняется в `%APPDATA%\tengu` — `setup` делается один раз.
+Если используешь архив релиза, укажи в `$tengu` путь к распакованному `tengu.exe`
+и пропусти сборку. `status` должен показать версию и uptime сервера. Конфигурация
+CLI сохраняется в `%APPDATA%\tengu`; `setup` нужен только при изменении сервера или токена.
 
-## 4. Проверка полного цикла с Jira
+Для cmd вместо `& $tengu` вызывай `.\cli\build\bin\mingwX64\releaseExecutable\tengu.exe`.
+Чтобы пользоваться короткой командой `tengu`, добавь каталог бинарника в пользовательский PATH.
 
-При запущенном сервере с `TENGU_JIRA_BASE_URL`:
+## 4. Подключить Jira
+
+Останови сервер в терминале 1, добавь URL своей Jira и запусти его снова:
 
 ```powershell
-$t = ".\cli\build\bin\mingwX64\releaseExecutable\tengu.exe"
-$t jira auth status                               # "no PAT configured" — норма до логина
-echo <твой-PAT> | & $t jira auth login --token -  # PAT уедет на сервер в data\secrets\
-$t jira issues list --project <KEY>               # живые тикеты
-$t jira issues view <KEY-1>
+$env:TENGU_JIRA_BASE_URL = "https://jira.example.com"
+.\gradlew.bat :server:run
 ```
+
+В cmd: `set TENGU_JIRA_BASE_URL=https://jira.example.com`, затем `gradlew.bat :server:run`.
+Переменные hub token и dev-режима из шага 2 должны оставаться в этой сессии.
+
+Введи PAT самостоятельно в обычном PowerShell. Значение скрыто при вводе,
+не попадает в текст команды и передаётся CLI через stdin:
+
+```powershell
+$jiraPat = Read-Host "Jira PAT" -AsSecureString
+$patPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($jiraPat)
+try {
+    [Runtime.InteropServices.Marshal]::PtrToStringBSTR($patPointer) | & $tengu jira auth login --token -
+} finally {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($patPointer)
+    $jiraPat.Dispose()
+    Remove-Variable jiraPat, patPointer
+}
+
+& $tengu jira projects list
+& $tengu jira issues list --project FOO --limit 5
+```
+
+Замени `FOO` ключом из списка проектов. PAT временно преобразуется в обычную строку
+в памяти PowerShell, чтобы отправить его процессу CLI. Не вводи его в чат или
+публичные логи. В cmd для безопасного ввода PAT перейди в PowerShell.
+
+## Конфигурация сервера
+
+| Переменная | Назначение |
+|---|---|
+| `TENGU_HUB_TOKENS` | Пользователи хаба: `user=token,...` |
+| `TENGU_JIRA_BASE_URL` | Адрес Jira; без него доступен только `status` |
+| `TENGU_DEV_SECRETS=1` | Незашифрованные файлы PAT, только для разработки |
+| `TENGU_DEV_SECRETS_DIR` | Каталог файлового хранилища, по умолчанию `data`; файлы `{user}/{tool}.json` |
+| `TENGU_PORT` | Порт сервера, по умолчанию 8080 |
+
+Для общего стенда используй собственные hub tokens и
+[конфигурацию сервера с Vault](../server/README.md). Для контейнера с PAT в памяти
+есть [локальный Docker-профиль](local-docker.md).
