@@ -7,6 +7,7 @@ logback = "1.5.18"
 logstashEncoder = "9.0"
 slf4j = "2.0.17"
 detekt = "2.0.0-alpha.6"
+dependencyCheck = "13.0.0"
 kotlinxCoroutines = "1.10.2"
 
 [libraries]
@@ -31,4 +32,5 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 detekt = { id = "dev.detekt", version.ref = "detekt" }
+dependency-check = { id = "org.owasp.dependencycheck", version.ref = "dependencyCheck" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

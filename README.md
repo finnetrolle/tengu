@@ -118,6 +118,7 @@ tengu status     # полный roundtrip через сервер
 
 ```sh
 ./gradlew build       # юнит/golden-тесты всех модулей
+./gradlew dependencyCheckAnalyze --no-parallel # OWASP: все модули, CVSS >= 7 блокирует проверку
 ./gradlew :jacocoTestReport  # JVM coverage: XML для SonarQube + HTML-отчёт
 bash scripts/e2e.sh   # сценарии S1-S8 в Linux/Windows shell, поднимает сервер на :8080
 bash scripts/e2e-logging.sh # Docker: JSON-логи, request ID и SIGTERM
@@ -126,6 +127,16 @@ bash scripts/e2e-logging.sh # Docker: JSON-логи, request ID и SIGTERM
 JaCoCo объединяет JVM-тесты `protocol`, `toon`, `toolkit`, `plugins:jira` и `server`.
 HTML-отчёт: `build/reports/jacoco/test/html/index.html`; XML для SonarQube:
 `build/reports/jacoco/test/jacocoTestReport.xml`. Native-only модуль `cli` в JaCoCo не входит.
+
+OWASP Dependency-Check сохраняет HTML и JSON в `<модуль>/build/reports/dependency-check/`.
+Задачи запускаются последовательно, чтобы разделять локальную базу NVD;
+каждый модуль разрешает свои зависимости в собственной Gradle-задаче.
+Порог `failBuildOnCVSS=7.0` задан в корневом Gradle build; ошибки обновления базы
+или анализа также завершают команду с ошибкой. NVD обновляется автоматически:
+с `NVD_API_KEY` используется API, без ключа - официальный JSON 2.0 feed.
+Это обходит [ошибку пустого API-ключа в Dependency-Check 13.0.0](https://github.com/dependency-check/DependencyCheck/issues/8715).
+Gradle проверяет Maven-зависимости,
+включая архивы Kotlin/Native `.klib`; это не аудит платформенных SDK и системных библиотек.
 
 Для живого S6-сценария: `TENGU_E2E_JIRA_URL`, `TENGU_E2E_JIRA_PAT`, `TENGU_E2E_JIRA_PROJECT`.
 

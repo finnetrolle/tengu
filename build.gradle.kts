@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.detekt) apply false
+    alias(libs.plugins.dependency.check) apply false
     jacoco
 }
 
@@ -34,6 +35,27 @@ allprojects {
 
 subprojects {
     apply(plugin = "dev.detekt")
+    apply(plugin = "org.owasp.dependencycheck")
+
+    configure<org.owasp.dependencycheck.gradle.extension.DependencyCheckExtension> {
+        failBuildOnCVSS.set(7.0f)
+        failOnError.set(true)
+        formats.set(listOf("HTML", "JSON"))
+        analyzedTypes.set(analyzedTypes.get() + "klib")
+        analyzers.zipExtensions.set("klib")
+        val nvdApiKey = providers.environmentVariable("NVD_API_KEY").orNull?.takeIf { it.isNotBlank() }
+        if (nvdApiKey == null) {
+            // Dependency-Check 13.0.0 sends an invalid empty API key; use NVD's official feed.
+            nvd.datafeedUrl.set("https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-{0}.json.gz")
+        } else {
+            nvd.apiKey.set(nvdApiKey)
+        }
+    }
+
+    tasks.withType<org.owasp.dependencycheck.gradle.tasks.Analyze>().configureEach {
+        // Vulnerability data can change even when the dependency graph has not.
+        outputs.upToDateWhen { false }
+    }
 
     if (path in jacocoTestTasks) {
         apply(plugin = "jacoco")
