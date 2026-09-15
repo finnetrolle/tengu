@@ -2,6 +2,7 @@
 
 Хаб тулов для ИИ-агентов: единый AXI-совместимый CLI (`tengu`), через который агенты discover'ят корпоративные системы (Jira, …) и вызывают их. Плагины и доступы живут на центральном сервере; агент про креды не знает.
 
+- Продуктовое описание, ценность и УТП - [specs/PRODUCT.md](specs/PRODUCT.md)
 - Архитектура и решения — [ARCHITECTURE.md](ARCHITECTURE.md)
 - Запуск на Windows (cmd/PowerShell) — [docs/windows.md](docs/windows.md)
 - Локальный одноразовый Docker с Jira PAT в памяти — [docs/local-docker.md](docs/local-docker.md)
