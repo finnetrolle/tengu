@@ -40,7 +40,7 @@ specs/
 | [EPIC-03: Внешняя авторизация команд Tengu](epics/epic_03_external_authorization.md) | `Draft` | не декомпозирован | после уточнения контракта и пилотного провайдера |
 | [TNG-02: Добавить команду смены статуса Jira-задачи](issues/issue_02_jira_issue_transition.md) | `Blocked` | не начата | 2 инженерных дня |
 | [TNG-03: Структурированные серверные логи в STDOUT](issues/issue_03_server_stdout_logging.md) | `Done` | реализована, проверки пройдены | не оценивалась |
-| [TNG-04: W3C-трассировка вызовов Tengu CLI и сервера](issues/issue_04_w3c_distributed_tracing.md) | `Draft` | согласована цель | после технической проработки |
+| [TNG-04: Сквозные traceparent и session_id от CLI через сервер до Jira и Vault](issues/issue_04_w3c_distributed_tracing.md) | `Draft` | trace/session-контракт и E2E-критерии определены; выбор Native SDK/экспорта | после проверки Native SDK/экспорта |
 | [TNG-05: Передача агенту информации об инструментах, командах и их использовании](issues/issue_05_agent_tool_discovery.md) | `Draft` | задача на проработку процесса | после определения пилота и объёма проверки |
 
 ## Следующая работа
