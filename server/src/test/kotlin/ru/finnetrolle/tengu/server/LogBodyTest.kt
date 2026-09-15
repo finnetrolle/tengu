@@ -21,6 +21,24 @@ import kotlin.test.assertTrue
 class LogBodyTest {
     private val unicodeEvidence: Path
         get() = Path.of(System.getProperty("tengu.test.fixtures"), "body-boundaries.jsonl")
+
+    @Test
+    fun unhandledFailureAfterValidationNeverCapturesItsExceptionMessage() {
+        for (body in listOf(false, true)) LogCapture().use { logs -> testApplication {
+            loggingApplication(logs, body, secretsScopeFor = { _, _ -> error("scope-exception-marker") })
+            val response = invoke()
+            assertEquals(500, response.status.value)
+            assertEquals("scope-exception-marker", response.bodyAsText())
+            logs.barrier()
+            val event = logs.request(response)
+            assertRequest(event, 500, "ERROR", "error")
+            assertEquals("alice", event.text("user_id"))
+            assertNoBody(event)
+            assertEquals("java.lang.IllegalStateException", event.text("exception_type"))
+            assertFalse("scope-exception-marker" in logs.bytes().toString(Charsets.UTF_8))
+        } }
+    }
+
     @Test
     fun exactFinalBodyForOkNoopAndErrorIncludingBusinessText() {
         val results = listOf(

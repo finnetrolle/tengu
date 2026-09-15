@@ -45,6 +45,7 @@ def exercise(base, destination):
         calls[user] = request(base, "/v1/invoke", token, '{"tool":"status","commandPath":["status"]}')
     calls["malformed"] = request(base, "/v1/invoke", "token-a", "{parse-marker-secret")
     calls["unauthorized"] = request(base, "/v1/invoke", "invalid-bearer-marker", "body-marker-secret")
+    calls["malformed_path"] = request(base, "/bad-path-marker%ZZ")
     pathlib.Path(destination).write_text(json.dumps(calls, ensure_ascii=False), encoding="utf-8")
 
 
@@ -105,11 +106,14 @@ def verify(directory, mode):
     expected = {"health": (200, "DEBUG", "ok", None, None), "manifest": (200, "INFO", "ok", "alice", None),
                 "alice": (200, "INFO", "ok", "alice", None), "bob": (200, "INFO", "ok", "bob", None),
                 "malformed": (400, "WARN", "error", "alice", "USAGE"),
-                "unauthorized": (401, "WARN", "error", None, "AUTH")}
+                "unauthorized": (401, "WARN", "error", None, "AUTH"),
+                "malformed_path": (400, "WARN", "error", None, None)}
     requests = [r for r in records if r.get("event") == "http_request_completed"]
     for name, (status, level, outcome, user, kind) in expected.items():
         response = http[name]
         require(response["status"] == status, f"HTTP {name}")
+        if name == "malformed_path":
+            require(response["body"] == "Url decode failed for /bad-path-marker%ZZ", "HTTP error body changed")
         matches = [r for r in requests if r["request_id"] == response["request_id"]]
         if name == "health" and mode == "default":
             require(not matches, "INFO logs successful health")
@@ -126,7 +130,7 @@ def verify(directory, mode):
         else:
             require(not any(key.startswith("response_body") for key in event), f"excluded body {name}")
     for marker in (b"parse-marker-secret", b"body-marker-secret", b"invalid-bearer-marker", b"incoming-id-marker",
-                   b"forged-user-marker", b"query-marker"):
+                   b"forged-user-marker", b"query-marker", b"bad-path-marker"):
         require(marker not in raw, f"input leaked: {marker!r}")
     require(not (directory / "secret-files.txt").read_text(), "unexpected file in temporary secrets directory")
     changes = (directory / "files.txt").read_text().splitlines()

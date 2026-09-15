@@ -2,7 +2,10 @@ package ru.finnetrolle.tengu.server
 
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.statement.bodyAsText
 import io.ktor.server.application.ApplicationCallPipeline
+import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.plugins.NotFoundException
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
@@ -23,6 +26,34 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class ServerLoggingTest {
+    @Test
+    fun engineErrorsPreserveHttpStatusAndBodyWithoutLeakingIntoLogs() {
+        val cases = listOf(
+            Triple(BadRequestException("bad-request-marker"), 400, "bad-request-marker"),
+            Triple(NotFoundException("missing-entity-marker"), 404, "missing-entity-marker"),
+            Triple(IllegalStateException("internal-message-marker"), 500, "internal-message-marker"),
+            Triple(IllegalStateException(), 500, ""),
+        )
+        for ((cause, status, body) in cases) LogCapture().use { logs ->
+            testApplication {
+                environment { log = logs.context.getLogger("io.ktor.test") }
+                application {
+                    installRequestLogging(logger = logs.logger)
+                    routing { get("/failure-uri-marker") { throw cause } }
+                }
+                val response = client.get("/failure-uri-marker")
+                assertEquals(status, response.status.value)
+                assertEquals(body, response.bodyAsText())
+                logs.barrier()
+                assertRequest(logs.request(response), status, if (status < 500) "WARN" else "ERROR", "error")
+                assertEquals(1, logs.requests().size)
+                val output = logs.bytes().toString(Charsets.UTF_8)
+                listOf("bad-request-marker", "missing-entity-marker", "internal-message-marker", "failure-uri-marker")
+                    .forEach { assertFalse(it in output, it) }
+            }
+        }
+    }
+
     @Test
     fun httpMatrixAndDescriptorMetadata() = LogCapture().use { logs ->
         testApplication {

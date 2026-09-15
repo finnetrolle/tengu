@@ -7,6 +7,8 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.ApplicationCallPipeline
 import io.ktor.server.application.call
 import io.ktor.server.application.isHandled
+import io.ktor.server.engine.BaseApplicationResponse
+import io.ktor.server.engine.defaultExceptionStatusCode
 import io.ktor.server.request.httpMethod
 import io.ktor.server.response.header
 import io.ktor.server.response.ApplicationSendPipeline
@@ -137,10 +139,23 @@ fun Application.installRequestLogging(
         } catch (cause: Throwable) {
             context.outcome = "error"
             context.exception(cause)
-            if (!call.response.isCommitted) call.respond(HttpStatusCode.InternalServerError)
+            context.bodyAllowed = false // Engine error bodies can contain exception messages.
+            call.respondEngineFailure(cause)
             // The failure is already recorded; do not send it to Ktor's raw URI/Throwable logger.
         } finally {
             context.complete(logger, call.request.httpMethod.value, call.response.status()?.value)
         }
+    }
+}
+
+/** Preserve Ktor's default HTTP error response without its raw URI/Throwable logging. */
+private suspend fun ApplicationCall.respondEngineFailure(cause: Throwable) {
+    if (response.isCommitted || response.isSent) return
+    val status = defaultExceptionStatusCode(cause) ?: HttpStatusCode.InternalServerError
+    try {
+        val message = cause.message
+        if (message == null) respond(status) else respond(status, message)
+    } catch (_: BaseApplicationResponse.ResponseAlreadySentException) {
+        // Another response already completed the call, as in Ktor's default error responder.
     }
 }

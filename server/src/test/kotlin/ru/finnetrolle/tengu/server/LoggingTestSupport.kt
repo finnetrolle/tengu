@@ -116,6 +116,7 @@ internal fun ApplicationTestBuilder.loggingApplication(
     capture: LogCapture,
     body: Boolean = false,
     plugin: ToolPlugin = LoggingPlugin(),
+    secretsScopeFor: (String, String) -> ru.finnetrolle.tengu.toolkit.SecretScope = { _, _ -> FakeSecretScope() },
 ) {
     application {
         val registry = PluginRegistry().apply { register(plugin) }
@@ -124,7 +125,7 @@ internal fun ApplicationTestBuilder.loggingApplication(
         monitor.subscribe(io.ktor.server.application.ApplicationStopped) { http.close() }
         tenguModule(
             ServerDeps(registry, StaticTokenHubAuth(mapOf("token-a" to "alice", "token-b" to "bob")),
-                http, Clock.systemUTC(), Instant.EPOCH, ServerInfo.VERSION, 4, { _, _ -> FakeSecretScope() }),
+                http, Clock.systemUTC(), Instant.EPOCH, ServerInfo.VERSION, 4, secretsScopeFor),
             LoggingConfig(responseBody = body), capture.logger,
         )
     }

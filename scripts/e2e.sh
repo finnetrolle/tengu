@@ -116,6 +116,13 @@ expect_exit "S5 неизвестный флаг → 2" 2 "$TENGU" jira issues li
 expect_out  "S5 инлайн списка флагов" "valid flags" "$TENGU" jira issues list --stat open
 expect_exit "S5 без required → 2" 2 "$TENGU" jira issues create
 
+malformed_status=$(curl -sS -m 2 -o "$TMP/malformed-body" -w '%{http_code}' 'http://localhost:8080/%ZZ')
+if [ "$malformed_status" = 400 ] && [ "$(cat "$TMP/malformed-body")" = 'Url decode failed for /%ZZ' ]; then
+    ok "S5 malformed URL сохраняет HTTP 400 и body"
+else
+    fail "S5 malformed URL сохраняет HTTP 400 и body" "HTTP $malformed_status"
+fi
+
 echo "== S6: живой Jira (опционально) =="
 if [ -n "${TENGU_E2E_JIRA_URL:-}" ] && [ -n "${TENGU_E2E_JIRA_PAT:-}" ] && [ -n "${TENGU_E2E_JIRA_PROJECT:-}" ]; then
     echo "jira-pat" | "$TENGU" jira auth login --token - >/dev/null
